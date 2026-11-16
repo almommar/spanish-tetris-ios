@@ -21,34 +21,37 @@ jobs:
 
       - name: Preparar archivos y crear proyecto iOS
         run: |
-          # 1. Crear package.json si no existe
+          # 1. Si se subió la carpeta SpanishTetris-iOS, mover su contenido a la raíz
+          if [ -d "SpanishTetris-iOS" ]; then
+            echo "--> Detectada subcarpeta SpanishTetris-iOS. Extrayendo archivos..."
+            cp -r SpanishTetris-iOS/* . 2>/dev/null || true
+          fi
+
+          # 2. Crear package.json si no existe
           if [ ! -f "package.json" ]; then
             npm init -y
           fi
 
-          # 2. Instalar Capacitor
+          # 3. Instalar Capacitor
           npm install @capacitor/core @capacitor/cli @capacitor/ios
 
-          # 3. Localizar automáticamente el archivo HTML de tu juego
+          # 4. Asegurar carpeta www
           mkdir -p www
-          HTML_FILE=$(find . -maxdepth 4 -iname "*.html" ! -path "*/node_modules/*" ! -path "*/.git/*" ! -path "*/www/*" | head -n 1)
 
-          if [ -n "$HTML_FILE" ]; then
-            echo "--> Archivo HTML encontrado en: $HTML_FILE"
-            HTML_DIR=$(dirname "$HTML_FILE")
-            # Copiar todos los recursos de esa carpeta (CSS, JS, imágenes) a www
-            cp -r "$HTML_DIR"/* www/ 2>/dev/null || true
-            # Asegurar que exista index.html en minúsculas
-            if [ ! -f "www/index.html" ]; then
-              cp "$HTML_FILE" www/index.html
+          # Si no existe www/index.html, buscar cualquier archivo html y copiarlo
+          if [ ! -f "www/index.html" ]; then
+            HTML_FILE=$(find . -iname "*.html" ! -path "*/node_modules/*" ! -path "*/.git/*" ! -path "./www/*" | head -n 1)
+            if [ -n "$HTML_FILE" ]; then
+              echo "--> Archivo HTML encontrado en: $HTML_FILE"
+              HTML_DIR=$(dirname "$HTML_FILE")
+              cp -r "$HTML_DIR"/* www/ 2>/dev/null || true
+              if [ ! -f "www/index.html" ]; then
+                cp "$HTML_FILE" www/index.html
+              fi
             fi
-          else
-            echo "ERROR: No se encontró ningún archivo .html en el repositorio. Archivos actuales:"
-            ls -R
-            exit 1
           fi
 
-          # 4. Crear configuración de Capacitor si no existe
+          # 5. Crear configuración de Capacitor si no existe
           if [ ! -f "capacitor.config.json" ]; then
             cat << 'EOF' > capacitor.config.json
           {
@@ -59,7 +62,7 @@ jobs:
           EOF
           fi
 
-          # 5. Generar proyecto iOS nativo y sincronizar
+          # 6. Generar proyecto iOS nativo y sincronizar
           npx cap add ios
           npx cap sync ios
 
