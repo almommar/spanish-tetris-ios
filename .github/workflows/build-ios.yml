@@ -2,12 +2,14 @@ name: Build iOS IPA
 
 on:
   push:
-    branches: [ "**" ]
+    branches:
+      - '**'
   workflow_dispatch:
 
 jobs:
   build:
-runs-on: macos-13
+    runs-on: macos-13
+
     steps:
       - name: Descargar repositorio
         uses: actions/checkout@v4
