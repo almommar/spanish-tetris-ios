@@ -1,0 +1,2343 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Spanish Tetris Challenge</title>
+<style>
+  :root{
+    --bg:#06060e;
+    --panel:rgba(255,255,255,.045);
+    --line:rgba(255,255,255,.09);
+    --text:#e8ecff;
+    --dim:#8a90b5;
+    --cyan:#00f0ff;
+    --pink:#ff2e93;
+    --violet:#9b5cff;
+    --good:#39ff14;
+    --bad:#ff2e63;
+    --accent:#00f0ff;
+    --bh:min(72dvh,640px);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  [hidden]{display:none!important}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;overscroll-behavior:none}
+  body{
+    background:
+      radial-gradient(900px 500px at 15% -10%,rgba(155,92,255,.18),transparent 60%),
+      radial-gradient(800px 500px at 90% 110%,rgba(0,240,255,.14),transparent 60%),
+      var(--bg);
+    min-height:100dvh;
+  }
+  .app{max-width:1000px;margin:0 auto;padding:14px 14px 18px;display:flex;flex-direction:column;gap:14px;min-height:100dvh}
+
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .titlebox{display:flex;flex-direction:column;gap:2px}
+  h1{margin:0;font-size:clamp(18px,3.4vw,28px);letter-spacing:.14em;font-weight:800;
+    background:linear-gradient(90deg,var(--cyan),var(--violet) 55%,var(--pink));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 0 12px rgba(155,92,255,.45))}
+  .sub{font-size:12px;letter-spacing:.18em;color:var(--dim);text-transform:uppercase}
+  .btns{display:flex;gap:8px;flex-wrap:wrap}
+  button{font:inherit;color:var(--text);cursor:pointer}
+  .btn{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:9px 16px;
+    font-weight:700;font-size:13px;letter-spacing:.1em;text-transform:uppercase;
+    transition:transform .15s,box-shadow .15s,background .15s,border-color .15s}
+  .btn:hover:not(:disabled){transform:translateY(-2px);border-color:var(--cyan);
+    box-shadow:0 6px 18px rgba(0,240,255,.2);background:rgba(0,240,255,.08)}
+  .btn:active:not(:disabled){transform:translateY(0)}
+  .btn:disabled{opacity:.38;cursor:not-allowed}
+  .btn.primary{background:linear-gradient(135deg,rgba(0,240,255,.25),rgba(155,92,255,.3));border-color:rgba(0,240,255,.5)}
+  .btn.danger{border-color:rgba(255,46,99,.5);color:#ff8fa8}
+  .btn.big{padding:13px 30px;font-size:15px;border-radius:14px}
+  .btn.small{padding:6px 11px;font-size:11px;border-radius:9px}
+  #soundBtn[aria-pressed="false"]{color:var(--dim);text-decoration:line-through}
+
+  .stage{display:grid;grid-template-columns:200px auto 190px;grid-template-areas:"stats board side";
+    gap:20px;justify-content:center;align-items:start;flex:1}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px;
+    box-shadow:0 10px 30px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.05);backdrop-filter:blur(6px)}
+  .leftcol{grid-area:stats;display:flex;flex-direction:column;gap:14px}
+  .stats{display:flex;flex-direction:column;gap:12px}
+  .stat .k{font-size:11px;letter-spacing:.2em;color:var(--dim);text-transform:uppercase}
+  .stat .v{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:2px;
+    text-shadow:0 0 14px rgba(0,240,255,.35)}
+  .stat.hi .v{color:#ffe600;text-shadow:0 0 14px rgba(255,230,0,.35)}
+  .stat .v.pop{animation:pop .25s}
+  @keyframes pop{50%{transform:scale(1.15)}}
+
+  .edu{display:flex;flex-direction:column;gap:10px;border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
+  .worldchip{display:flex;align-items:center;gap:8px;font-weight:800;font-size:12px;letter-spacing:.1em;
+    padding:7px 10px;border-radius:10px;background:color-mix(in srgb,var(--accent) 16%,transparent);
+    border:1px solid color-mix(in srgb,var(--accent) 55%,transparent);color:var(--accent)}
+  .worldchip .we{font-size:18px}
+  .mini{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--dim)}
+  .mini b{font-size:16px;color:var(--text);font-variant-numeric:tabular-nums}
+  .rankline{font-size:12px;color:var(--dim);display:flex;justify-content:space-between;gap:6px}
+  .bar{height:6px;border-radius:6px;background:rgba(255,255,255,.08);overflow:hidden}
+  .bar>i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--violet));transition:width .4s}
+  .nextinfo{font-size:11px;line-height:1.5;color:var(--dim)}
+  .streak.hot b{color:#ffb020;text-shadow:0 0 10px rgba(255,160,0,.6)}
+
+  .side{grid-area:side;display:flex;flex-direction:column;gap:14px}
+  .side h3{margin:0 0 8px;font-size:11px;letter-spacing:.2em;color:var(--dim);text-transform:uppercase}
+  .side canvas{width:100%;height:auto;display:block}
+
+  .board-wrap{grid-area:board;position:relative;justify-self:center;
+    width:min(100%,calc(var(--bh)/2));aspect-ratio:1/2;
+    border-radius:16px;border:1px solid rgba(0,240,255,.35);overflow:hidden;
+    box-shadow:0 0 0 1px rgba(255,255,255,.04),0 0 40px rgba(0,240,255,.15),0 0 90px rgba(155,92,255,.12),0 20px 50px rgba(0,0,0,.5)}
+  .board-wrap canvas{width:100%;height:100%;display:block}
+  .board-wrap.shake{animation:shake .14s}
+  @keyframes shake{25%{transform:translateY(3px)}60%{transform:translateY(-2px)}}
+  .board-wrap.dead canvas{filter:grayscale(.8) brightness(.6);transition:filter .6s}
+
+  .overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:14px;text-align:center;padding:18px;background:rgba(5,5,14,.8);backdrop-filter:blur(4px);
+    animation:fade .25s}
+  @keyframes fade{from{opacity:0}}
+  .overlay h2{margin:0;font-size:clamp(24px,5vw,34px);letter-spacing:.2em;
+    background:linear-gradient(90deg,var(--cyan),var(--pink));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .overlay p{margin:0;color:var(--dim);font-size:14px;line-height:1.5}
+
+  .toast{position:absolute;left:0;right:0;top:36%;text-align:center;pointer-events:none;
+    font-size:clamp(22px,5vw,32px);font-weight:900;letter-spacing:.18em;opacity:0;color:#fff;
+    text-shadow:0 0 18px var(--cyan),0 0 36px var(--violet)}
+  .toast.show{animation:toast 1.3s ease-out}
+  .toast.small{font-size:clamp(16px,3.5vw,22px);text-shadow:0 0 14px var(--pink)}
+  @keyframes toast{0%{opacity:0;transform:scale(.6)}15%{opacity:1;transform:scale(1.1)}30%{transform:scale(1)}75%{opacity:1}100%{opacity:0;transform:translateY(-30px)}}
+
+  .touch{display:none;flex-direction:column;gap:8px;align-items:center;user-select:none;-webkit-user-select:none}
+  .touch .row{display:flex;gap:8px;justify-content:center}
+  .touch button{touch-action:none;min-width:62px;height:52px;padding:0 10px;border-radius:14px;
+    background:var(--panel);border:1px solid var(--line);font-size:18px;font-weight:700;color:var(--text);user-select:none}
+  .touch button.wide{min-width:84px;font-size:13px;letter-spacing:.08em}
+  .touch button.on{background:rgba(0,240,255,.25);border-color:var(--cyan)}
+
+  .help{display:grid;grid-template-columns:1.4fr 1fr;gap:14px}
+  .help h4{margin:0 0 8px;font-size:11px;letter-spacing:.2em;color:var(--dim);text-transform:uppercase}
+  .keys{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px 14px;font-size:13px;color:var(--dim)}
+  kbd{display:inline-block;min-width:24px;text-align:center;padding:2px 7px;margin-right:6px;border-radius:6px;
+    background:rgba(255,255,255,.08);border:1px solid var(--line);border-bottom-width:2px;color:var(--text);font-size:12px;font-weight:600;font-family:inherit}
+  .tips{margin:0;padding-left:18px;font-size:13px;color:var(--dim);line-height:1.6}
+
+  /* ============================ MODALS ============================ */
+  .modal{position:fixed;inset:0;z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:14px;
+    background:rgba(4,4,12,.86);backdrop-filter:blur(6px);overflow:auto;animation:fade .2s}
+  .modal.center{align-items:center}
+  .card{width:min(100%,760px);margin:auto;background:linear-gradient(180deg,rgba(26,26,52,.97),rgba(12,12,28,.98));
+    border:1px solid rgba(0,240,255,.35);border-radius:22px;padding:22px;
+    box-shadow:0 0 50px rgba(0,240,255,.12),0 0 100px rgba(155,92,255,.12),0 30px 70px rgba(0,0,0,.6)}
+  .card h2{margin:0 0 4px;font-size:22px;letter-spacing:.12em}
+  .card h3{margin:18px 0 8px;font-size:12px;letter-spacing:.2em;color:var(--dim);text-transform:uppercase}
+  .card .lead{margin:0;color:var(--dim);font-size:14px}
+  .grad{background:linear-gradient(90deg,var(--cyan),var(--violet) 55%,var(--pink));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .row.center{justify-content:center}
+  .spacer{flex:1}
+  input[type=text],select{font:inherit;color:var(--text);background:rgba(255,255,255,.06);border:1px solid var(--line);
+    border-radius:10px;padding:9px 12px;outline:none}
+  input[type=text]:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(0,240,255,.15)}
+  select option{background:#14142a}
+
+  /* menu */
+  .menu-title{text-align:center;margin-bottom:6px}
+  .menu-title h1{font-size:clamp(24px,5.5vw,40px);letter-spacing:.12em;display:inline-block}
+  .menu-title .sub{margin-top:4px;font-size:13px}
+  .playerbox{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:14px 0 4px;padding:12px;border-radius:14px;background:var(--panel);border:1px solid var(--line)}
+  .playerbox label{font-size:11px;letter-spacing:.18em;color:var(--dim);text-transform:uppercase;display:block;margin-bottom:4px}
+  .pstats{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--dim)}
+  .pstats b{color:var(--text)}
+  .worlds{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .world{position:relative;text-align:left;padding:12px;border-radius:14px;background:var(--panel);
+    border:1px solid var(--line);display:flex;flex-direction:column;gap:3px;transition:transform .15s,border-color .15s,box-shadow .15s}
+  .world:hover:not(.locked){transform:translateY(-2px);border-color:var(--wc)}
+  .world.sel{border-color:var(--wc);box-shadow:0 0 0 1px var(--wc),0 8px 26px color-mix(in srgb,var(--wc) 30%,transparent);
+    background:color-mix(in srgb,var(--wc) 12%,transparent)}
+  .world.locked{opacity:.55;cursor:not-allowed}
+  .world .w-emoji{font-size:24px}
+  .world b{font-size:12px;letter-spacing:.08em;color:var(--wc)}
+  .world small{font-size:11px;color:var(--dim);line-height:1.35}
+  .world em{font-style:normal;font-size:11px;color:#ffb020}
+  .menu-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:18px}
+
+  /* challenge */
+  .challenge{width:min(100%,640px);border-color:color-mix(in srgb,var(--cc,#00f0ff) 60%,transparent);animation:cardin .3s cubic-bezier(.2,1.2,.4,1)}
+  @keyframes cardin{from{opacity:0;transform:translateY(24px) scale(.96)}}
+  .challenge.good{animation:goodpulse .5s}
+  .challenge.bad{animation:badshake .45s;border-color:var(--bad)}
+  @keyframes goodpulse{40%{box-shadow:0 0 0 4px rgba(57,255,20,.45),0 0 60px rgba(57,255,20,.35)}}
+  @keyframes badshake{20%{transform:translateX(-10px)}40%{transform:translateX(9px)}60%{transform:translateX(-6px)}80%{transform:translateX(4px)}}
+  .ch-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+  .chip{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:5px 10px;border-radius:999px;
+    background:rgba(255,255,255,.07);border:1px solid var(--line);white-space:nowrap}
+  .chip.cat{color:var(--cc);border-color:var(--cc);background:color-mix(in srgb,var(--cc) 14%,transparent)}
+  .chip.streak{color:#ffb020}
+  .bossbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px;padding:10px 12px;border-radius:12px;
+    background:linear-gradient(90deg,rgba(255,46,99,.18),rgba(155,92,255,.14));border:1px solid rgba(255,46,99,.45)}
+  .bossbar .be{font-size:30px}
+  .bossbar .bn{font-weight:800;letter-spacing:.08em;font-size:13px}
+  .bossbar .bi{font-size:11px;color:var(--dim)}
+  .hp{display:flex;gap:4px;margin-left:auto}
+  .hp i{width:26px;height:10px;border-radius:5px;background:var(--bad);box-shadow:0 0 8px rgba(255,46,99,.6);transition:all .25s}
+  .hp i.off{background:rgba(255,255,255,.12);box-shadow:none}
+  .timer{position:relative;height:12px;border-radius:12px;background:rgba(255,255,255,.08);overflow:hidden;margin-bottom:14px}
+  .timer>i{display:block;height:100%;width:100%;background:linear-gradient(90deg,var(--good),var(--cyan));transition:width .12s linear}
+  .timer.urgent>i{background:linear-gradient(90deg,#ffb020,var(--bad))}
+  .timer span{position:absolute;right:8px;top:-1px;font-size:10px;font-weight:800;line-height:12px;color:#fff;text-shadow:0 0 4px #000}
+  .ch-emoji{font-size:64px;text-align:center;line-height:1.1;margin:2px 0 6px;filter:drop-shadow(0 6px 18px rgba(0,0,0,.5))}
+  .ch-instr{text-align:center;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin-bottom:6px}
+  .ch-prompt{text-align:center;font-size:clamp(18px,3.6vw,24px);font-weight:700;line-height:1.35;margin-bottom:16px}
+  .ch-prompt .blank{display:inline-block;min-width:80px;border-bottom:3px solid var(--cyan);color:var(--cyan);padding:0 6px;margin:0 2px}
+  .ch-prompt .blank.filled{color:var(--good);border-color:var(--good)}
+  .ch-hint{text-align:center;color:var(--dim);font-size:14px;margin:-8px 0 14px;font-style:italic}
+  .opts{display:grid;gap:9px}
+  .opt{display:flex;align-items:center;gap:12px;text-align:left;padding:13px 14px;border-radius:14px;font-size:clamp(15px,2.8vw,18px);font-weight:600;
+    background:rgba(255,255,255,.055);border:1.5px solid var(--line);transition:transform .12s,border-color .12s,background .12s}
+  .opt kbd{margin:0;flex:none}
+  .opt:hover:not(:disabled){transform:translateX(3px);border-color:var(--cyan);background:rgba(0,240,255,.09)}
+  .opt:disabled{cursor:default}
+  .opt.right{background:rgba(57,255,20,.16);border-color:var(--good);color:#d8ffd0}
+  .opt.wrong{background:rgba(255,46,99,.16);border-color:var(--bad);color:#ffc7d2}
+  .opt.dim{opacity:.45}
+  .tray{min-height:58px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px;margin-bottom:10px;border-radius:14px;
+    background:rgba(255,255,255,.04);border:1.5px dashed rgba(0,240,255,.4)}
+  .tray.right{border-color:var(--good);background:rgba(57,255,20,.08)}
+  .tray.wrong{border-color:var(--bad);background:rgba(255,46,99,.08)}
+  .tray .ph{color:var(--dim);font-size:13px}
+  .bank{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:12px;min-height:44px}
+  .tok{padding:9px 14px;border-radius:11px;font-size:clamp(15px,2.8vw,18px);font-weight:700;background:rgba(155,92,255,.2);
+    border:1.5px solid rgba(155,92,255,.6);transition:transform .12s}
+  .tok:hover:not(:disabled){transform:translateY(-2px)}
+  .tok.in{background:rgba(0,240,255,.16);border-color:rgba(0,240,255,.6)}
+  .tok kbd{margin:0 6px 0 0;padding:0 5px;font-size:10px}
+  .feedback{margin-top:14px;padding:14px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid var(--line);animation:fade .25s}
+  .feedback.good{border-color:rgba(57,255,20,.6);background:rgba(57,255,20,.07)}
+  .feedback.bad{border-color:rgba(255,46,99,.6);background:rgba(255,46,99,.07)}
+  .fb-title{font-size:20px;font-weight:900;letter-spacing:.06em;margin-bottom:6px}
+  .feedback.good .fb-title{color:var(--good)}
+  .feedback.bad .fb-title{color:#ff7d99}
+  .fb-answer{font-size:16px;margin-bottom:6px}
+  .fb-answer b{color:var(--good)}
+  .fb-why{font-size:14px;color:#c9cdea;line-height:1.5;margin-bottom:10px}
+  .rw{display:inline-block;margin:0 6px 6px 0;padding:4px 10px;border-radius:999px;font-size:13px;font-weight:800;animation:rise .6s ease-out}
+  .rw.xp{background:rgba(155,92,255,.25);color:#d9c6ff}
+  .rw.coin{background:rgba(255,230,0,.18);color:#ffe600}
+  .rw.pts{background:rgba(0,240,255,.18);color:#7df6ff}
+  .rw.neg{background:rgba(255,46,99,.2);color:#ff9db1}
+  @keyframes rise{from{opacity:0;transform:translateY(14px) scale(.8)}}
+  .confetti{position:absolute;inset:0;pointer-events:none;overflow:hidden;border-radius:22px}
+  .confetti i{position:absolute;top:30%;width:9px;height:14px;border-radius:2px;opacity:0;animation:conf 1.1s ease-out forwards}
+  @keyframes conf{0%{opacity:1;transform:translate(0,0) rotate(0)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--rot))}}
+  .challenge{position:relative}
+
+  /* results */
+  .big-score{font-size:clamp(40px,9vw,64px);font-weight:900;text-align:center;font-variant-numeric:tabular-nums;text-shadow:0 0 30px rgba(0,240,255,.5)}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .kpi{padding:12px;border-radius:14px;background:var(--panel);border:1px solid var(--line);text-align:center}
+  .kpi b{display:block;font-size:24px;font-variant-numeric:tabular-nums}
+  .kpi span{font-size:11px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase}
+  .kpi.good b{color:var(--good)} .kpi.bad b{color:#ff7d99} .kpi.xp b{color:#d9c6ff} .kpi.coin b{color:#ffe600}
+  .catrow{display:grid;grid-template-columns:150px 1fr 105px;gap:10px;align-items:center;font-size:13px;margin:6px 0}
+  .catrow .bar{height:10px}
+  .catrow .bar>i{background:linear-gradient(90deg,var(--cc),color-mix(in srgb,var(--cc) 50%,#fff))}
+  .catrow span:last-child{text-align:right;color:var(--dim);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .tagrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+  .tag{padding:6px 12px;border-radius:999px;font-size:13px;font-weight:700;border:1px solid var(--line);background:var(--panel)}
+  .tag.good{border-color:rgba(57,255,20,.6);color:#c7ffbd}
+  .tag.warn{border-color:rgba(255,176,32,.7);color:#ffd48a}
+  .tag.gold{border-color:rgba(255,230,0,.7);color:#ffe600}
+
+  /* profile */
+  .skins{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+  .skin{padding:12px;border-radius:14px;background:var(--panel);border:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+  .skin.eq{border-color:var(--good);box-shadow:0 0 0 1px var(--good)}
+  .sw{display:flex;gap:3px}
+  .sw i{width:16px;height:16px;border-radius:4px;display:block}
+  .achs{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+  .ach{display:flex;gap:10px;align-items:center;padding:10px;border-radius:12px;background:var(--panel);border:1px solid var(--line)}
+  .ach .ai{font-size:26px}
+  .ach b{font-size:13px;display:block}
+  .ach small{font-size:11px;color:var(--dim)}
+  .ach.lock{opacity:.4;filter:grayscale(1)}
+  #achToast{position:fixed;top:14px;right:14px;z-index:80;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+  .atoast{padding:12px 16px;border-radius:14px;background:rgba(20,20,44,.96);border:1px solid #ffe600;box-shadow:0 0 30px rgba(255,230,0,.3);
+    font-size:14px;animation:slidein .4s cubic-bezier(.2,1.2,.4,1)}
+  .atoast b{color:#ffe600}
+  @keyframes slidein{from{opacity:0;transform:translateX(60px)}}
+
+  /* teacher */
+  .tbl-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px;max-height:300px}
+  table{border-collapse:collapse;width:100%;font-size:13px}
+  th,td{padding:8px 10px;text-align:left;white-space:nowrap;border-bottom:1px solid var(--line)}
+  th{position:sticky;top:0;background:#171734;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+  tbody tr{cursor:pointer}
+  tbody tr:hover{background:rgba(0,240,255,.07)}
+  tbody tr.sel{background:rgba(0,240,255,.14)}
+  .tcards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:12px 0}
+  .check{display:flex;align-items:center;gap:8px;font-size:14px}
+
+  @media (max-width:900px){
+    :root{--bh:min(52dvh,540px)}
+    .app{padding:10px 10px 14px;gap:10px}
+    .stage{grid-template-columns:minmax(0,1fr) 92px;grid-template-areas:"stats stats" "board side";gap:10px}
+    .leftcol{gap:8px}
+    .stats{flex-direction:row;justify-content:space-between;padding:8px 12px;gap:8px}
+    .stat .v{font-size:17px}
+    .stat .k{font-size:9px;letter-spacing:.1em}
+    .edu{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:6px 10px;padding:8px 12px;align-items:center}
+    .edu .nextinfo,.edu .xpwrap{grid-column:1/-1}
+    .worldchip{font-size:10px;padding:5px 8px;letter-spacing:.04em}
+    .worldchip .we{font-size:14px}
+    .mini{flex-direction:column;align-items:flex-start;gap:0}
+    .side{gap:10px}
+    .side .panel{padding:8px}
+    .side h3{font-size:9px;margin-bottom:4px}
+    .touch{display:flex}
+    .help{grid-template-columns:1fr}
+    .btn{padding:8px 11px;font-size:11px}
+    .worlds{grid-template-columns:repeat(2,1fr)}
+    .grid4,.tcards{grid-template-columns:repeat(2,1fr)}
+    .catrow{grid-template-columns:100px 1fr 92px}
+  }
+  @media (min-width:901px) and (hover:hover) and (pointer:fine){ .touch{display:none} }
+  @media (max-width:420px){ h1{letter-spacing:.06em} .card{padding:16px} .worlds{grid-template-columns:1fr 1fr} }
+  @media (max-height:700px) and (min-width:901px){ :root{--bh:min(66dvh,560px)} }
+
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="titlebox">
+      <h1>SPANISH TETRIS CHALLENGE</h1>
+      <div class="sub">Play, Learn &amp; Master Spanish!</div>
+    </div>
+    <div class="btns">
+      <button class="btn primary" id="startBtn">Empezar</button>
+      <button class="btn" id="pauseBtn" disabled>Pausa</button>
+      <button class="btn" id="restartBtn">Reiniciar</button>
+      <button class="btn" id="menuBtn">Menú</button>
+      <button class="btn" id="soundBtn" aria-pressed="true" title="Sonido">Sonido: Sí</button>
+    </div>
+  </header>
+
+  <main class="stage">
+    <div class="leftcol">
+      <aside class="panel stats">
+        <div class="stat"><div class="k">Puntos</div><div class="v" id="score">0</div></div>
+        <div class="stat"><div class="k">Nivel</div><div class="v" id="level">1</div></div>
+        <div class="stat"><div class="k">Líneas</div><div class="v" id="lines">0</div></div>
+        <div class="stat hi"><div class="k">Récord</div><div class="v" id="hiscore">0</div></div>
+      </aside>
+      <aside class="panel edu" id="edu">
+        <div class="worldchip" id="eduWorld"></div>
+        <div class="mini"><span>Aciertos / Fallos</span><b><span id="eduOk" style="color:var(--good)">0</span> / <span id="eduBad" style="color:#ff7d99">0</span></b></div>
+        <div class="mini streak" id="eduStreakBox"><span>Racha 🔥</span><b id="eduStreak">0</b></div>
+        <div class="mini"><span>XP · 🪙</span><b><span id="eduXp">0</span> · <span id="eduCoins">0</span></b></div>
+        <div class="xpwrap">
+          <div class="rankline"><span id="eduRank"></span><span id="eduXpTo"></span></div>
+          <div class="bar"><i id="eduBar"></i></div>
+        </div>
+        <div class="nextinfo" id="eduNext"></div>
+      </aside>
+    </div>
+
+    <section class="board-wrap" id="boardWrap">
+      <canvas id="board"></canvas>
+      <div class="toast" id="toast"></div>
+      <div class="overlay" id="ovPause" hidden>
+        <h2>PAUSA</h2>
+        <p>Pulsa <b>P</b> para continuar</p>
+        <button class="btn primary big" id="ovResume">Continuar</button>
+      </div>
+    </section>
+
+    <aside class="side">
+      <div class="panel"><h3>Siguiente</h3><canvas id="nextC"></canvas></div>
+      <div class="panel"><h3>Guardada</h3><canvas id="holdC"></canvas></div>
+    </aside>
+  </main>
+
+  <div class="touch" id="touch">
+    <div class="row">
+      <button data-act="hold" class="wide">GUARDAR</button>
+      <button data-act="ccw" aria-label="Girar a la izquierda">&#8634;</button>
+      <button data-act="cw" aria-label="Girar a la derecha">&#8635;</button>
+      <button data-act="hard" class="wide">CAER</button>
+    </div>
+    <div class="row">
+      <button data-act="left" aria-label="Izquierda">&#9664;</button>
+      <button data-act="down" aria-label="Abajo">&#9660;</button>
+      <button data-act="right" aria-label="Derecha">&#9654;</button>
+    </div>
+  </div>
+
+  <footer class="help panel">
+    <div>
+      <h4>Controles</h4>
+      <div class="keys">
+        <div><kbd>&larr;</kbd><kbd>&rarr;</kbd>Mover</div>
+        <div><kbd>&darr;</kbd>Bajar rápido</div>
+        <div><kbd>&uarr;</kbd>Girar a la derecha</div>
+        <div><kbd>Z</kbd>Girar a la izquierda</div>
+        <div><kbd>Espacio</kbd>Caída instantánea</div>
+        <div><kbd>C</kbd>/<kbd>Shift</kbd>Guardar pieza</div>
+        <div><kbd>P</kbd>Pausa / Continuar</div>
+        <div><kbd>R</kbd>Reiniciar</div>
+        <div><kbd>1</kbd>–<kbd>4</kbd>Responder un reto</div>
+      </div>
+    </div>
+    <div>
+      <h4>Consejos</h4>
+      <ul class="tips">
+        <li>Cada 3 líneas: ¡reto de español! Cada 10 líneas: ¡jefe final!</li>
+        <li>Responde rápido y seguido: más XP, monedas y rachas.</li>
+        <li>Los bloques se paran mientras contestas.</li>
+      </ul>
+    </div>
+  </footer>
+</div>
+
+<div id="achToast"></div>
+
+<!-- ============================== MENU ============================== -->
+<div class="modal" id="mMenu" hidden>
+  <div class="card" id="menuCard">
+    <div class="menu-title">
+      <div class="grad" style="font-size:clamp(24px,5.5vw,38px);font-weight:900;letter-spacing:.1em">SPANISH TETRIS CHALLENGE</div>
+      <div class="sub">Play, Learn &amp; Master Spanish!</div>
+    </div>
+    <p class="lead" style="text-align:center;margin-top:8px">Completa líneas, responde retos de español (nivel A2) y sube de rango.</p>
+    <div class="playerbox">
+      <div>
+        <label for="nameInput">Tu nombre</label>
+        <input type="text" id="nameInput" list="nameList" maxlength="24" placeholder="Escribe tu nombre" autocomplete="off">
+        <datalist id="nameList"></datalist>
+      </div>
+      <div class="pstats" id="pstats"></div>
+    </div>
+    <div class="lead" id="nameHint" style="color:#ffb020;margin-bottom:6px" hidden>✏️ Escribe tu nombre para guardar tu progreso.</div>
+    <h3>Elige un mundo</h3>
+    <div class="worlds" id="worlds"></div>
+    <div class="menu-actions">
+      <button class="btn primary big" id="menuStart">▶ Empezar juego</button>
+      <button class="btn big" id="menuResume" hidden>Continuar partida</button>
+      <button class="btn" id="menuProfile">🏅 Perfil y tienda</button>
+      <button class="btn" id="menuTeacher">👩‍🏫 Modo profesor</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal center" id="mChallenge" hidden><div class="card challenge" id="chCard"></div></div>
+<div class="modal" id="mResults" hidden><div class="card" id="resCard"></div></div>
+<div class="modal" id="mProfile" hidden><div class="card" id="profCard"></div></div>
+<div class="modal" id="mTeacher" hidden><div class="card" id="teachCard"></div></div>
+
+<script>
+'use strict';
+/* =====================================================================
+   QUESTION BANK  (separate data structure — add questions with QB.add)
+   ---------------------------------------------------------------------
+   Categories:  voc = Vocabulario   gra = Gramática   rea = Español real
+                sen = Constructor de frases           bos = Jefe final
+   Worlds 1-6 · difficulty d: 1 (easy) 2 (core) 3 (upper A2)
+
+   Row formats (compact arrays, normalised below):
+   voc: [world, d, prompt, emoji, correct, [wrongs], why]
+   gra: [world, d, sentenceWith___, correct, [wrongs], why]
+   rea: [world, d, emoji, situation, correct, [wrongs], why]
+   sen: [world, d, sentence, english, [alternative orders], tip]
+   bos: [world, d, "mc",    prompt, correct, [wrongs], why]
+        [world, d, "build", sentence, english, [alternatives], tip]
+   Answer positions are shuffled at runtime.
+   ===================================================================== */
+const QB = {
+  bank: { voc:[], gra:[], rea:[], sen:[], bos:[] },
+  add(cat, rows){
+    rows.forEach(r => {
+      let q;
+      if(cat === 'voc') q = { type:'mc', world:r[0], d:r[1], prompt:r[2], emoji:r[3], answer:r[4], wrongs:r[5], why:r[6] };
+      else if(cat === 'gra') q = { type:'mc', world:r[0], d:r[1], prompt:r[2], emoji:'', answer:r[3], wrongs:r[4], why:r[5] };
+      else if(cat === 'rea') q = { type:'mc', world:r[0], d:r[1], emoji:r[2], prompt:r[3], answer:r[4], wrongs:r[5], why:r[6] };
+      else if(cat === 'sen') q = { type:'build', world:r[0], d:r[1], emoji:'', answer:r[2], en:r[3], alts:r[4] || [], why:r[5] };
+      else if(cat === 'bos'){
+        if(r[2] === 'build') q = { type:'build', world:r[0], d:r[1], emoji:'', answer:r[3], en:r[4], alts:r[5] || [], why:r[6] };
+        else q = { type:'mc', world:r[0], d:r[1], emoji:'', prompt:r[3], answer:r[4], wrongs:r[5], why:r[6] };
+      }
+      q.cat = cat;
+      q.id = cat + '-' + (this.bank[cat].length + 1);
+      this.bank[cat].push(q);
+    });
+  },
+  total(){ return Object.values(this.bank).reduce((n, l) => n + l.length, 0); }
+};
+
+
+/* ===================================================================
+   QUESTION DATA  (one block per category — edit or append freely)
+   =================================================================== */
+// VOCABULARY
+QB.add('voc', [
+// World 1: LA COMIDA
+[1,1,"¿Cómo se llama esto en español?","🥖","el pan",["la leche","el queso","el huevo"],"Pan = bread. Leche = milk, queso = cheese, huevo = egg."],
+[1,1,"¿Cómo se llama esto en español?","🧀","el queso",["el pan","la carne","el huevo"],"Queso = cheese. Pan = bread, carne = meat, huevo = egg."],
+[1,1,"¿Cómo se llama esto en español?","🥚","el huevo",["el queso","el pollo","el pan"],"Huevo = egg. Queso = cheese, pollo = chicken, pan = bread."],
+[1,1,"¿Cómo se llama esto en español?","🍌","el plátano",["la manzana","la fresa","la uva"],"Plátano = banana. Manzana = apple, fresa = strawberry, uva = grape."],
+[1,1,"¿Cómo se llama esto en español?","🥛","la leche",["el agua","el zumo","el café"],"Leche = milk. Agua = water, zumo = juice, café = coffee."],
+[1,1,"¿Cuál NO es una fruta?","","la patata",["la manzana","la naranja","la pera"],"Patata = potato, a vegetable. Manzana, naranja and pera are fruits."],
+[1,2,"¿Cómo se llama esto en español?","🥕","la zanahoria",["la cebolla","el tomate","la lechuga"],"Zanahoria = carrot. Cebolla = onion, tomate = tomato, lechuga = lettuce."],
+[1,2,"Por la noche, normalmente tomamos la ___.","","cena",["el desayuno","la merienda","el almuerzo"],"La cena = dinner, eaten at night. El desayuno is breakfast and la merienda is an afternoon snack."],
+[1,2,"¿Cómo se llama esto en español?","🥗","la ensalada",["la sopa","el postre","el bocadillo"],"Ensalada = salad. Sopa = soup, postre = dessert, bocadillo = sandwich."],
+[1,2,"En el restaurante pido la ___ al camarero para pagar.","","cuenta",["carta","mesa","plato"],"La cuenta = the bill. La carta is the menu."],
+[1,2,"¿Cómo se llama esto en español?","🍊","la naranja",["el limón","la manzana","la pera"],"Naranja = orange. Limón = lemon, manzana = apple, pera = pear."],
+[1,2,"¿Cómo se llama esto en español?","🍝","los espaguetis",["la pizza","el arroz","la sopa"],"Espaguetis = spaghetti. Pizza, arroz (rice) and sopa (soup) are different dishes."],
+[1,3,"Para tomar la sopa uso la ___.","🥄","cuchara",["el cuchillo","el tenedor","el plato"],"La cuchara = spoon. El cuchillo = knife, el tenedor = fork, el plato = plate."],
+[1,3,"¿Cómo se llama esto en español?","🍺","la cerveza",["el vino","el agua","el zumo"],"Cerveza = beer. Vino = wine, agua = water, zumo = juice."],
+[1,3,"Lo contrario de dulce es ___.","","salado",["frío","caliente","blando"],"Salado = salty, the opposite of sweet (dulce). Frío = cold, caliente = hot, blando = soft."],
+// World 2: LA CIUDAD
+[2,1,"¿Cómo se llama esto en español?","🚌","el autobús",["el tren","el metro","el avión"],"Autobús = bus. Tren = train, metro = underground, avión = plane."],
+[2,1,"¿Cómo se llama esto en español?","🚆","el tren",["el autobús","el barco","el coche"],"Tren = train. Autobús = bus, barco = boat, coche = car."],
+[2,1,"¿Cómo se llama este lugar en español?","🏥","el hospital",["la escuela","el banco","el hotel"],"Hospital = hospital, where sick people are treated. Escuela = school, banco = bank, hotel = hotel."],
+[2,1,"¿Cómo se llama este lugar en español?","🏦","el banco",["el hospital","la tienda","el hotel"],"Banco = bank, where you keep money. Tienda = shop."],
+[2,1,"¿Cómo se llama esto en español?","🚕","el taxi",["el autobús","la bicicleta","el tren"],"Taxi = taxi. Autobús = bus, bicicleta = bicycle, tren = train."],
+[2,1,"Es el lugar donde compras medicinas.","","la farmacia",["la panadería","la biblioteca","la estación"],"Farmacia = pharmacy. Panadería = bakery, biblioteca = library, estación = station."],
+[2,2,"¿Cómo se llama esto en español?","🚲","la bicicleta",["la moto","el coche","el patinete"],"Bicicleta = bicycle. Moto = motorbike, coche = car, patinete = scooter."],
+[2,2,"Compro el ___ de metro en la máquina.","🎫","billete",["buzón","esquina","cruce"],"El billete = ticket (Spain). Latin America often says boleto, which we do not use here."],
+[2,2,"¿Cómo se llama esto en español?","🚦","el semáforo",["la esquina","la calle","el edificio"],"Semáforo = traffic light. Esquina = corner, calle = street, edificio = building."],
+[2,2,"Es el edificio donde trabaja el alcalde de la ciudad.","","el ayuntamiento",["el museo","el cine","el teatro"],"Ayuntamiento = town hall. Museo = museum, cine = cinema, teatro = theatre."],
+[2,2,"¿Cómo se llama esto en español?","🚇","el metro",["el taxi","el barco","el autobús"],"Metro = underground or subway. Taxi = taxi, barco = boat, autobús = bus."],
+[2,2,"¿Cómo se llama esto en español?","🌉","el puente",["la calle","la plaza","la esquina"],"Puente = bridge. Calle = street, plaza = square, esquina = corner."],
+[2,3,"En la estación, el tren sale desde el ___.","","andén",["semáforo","buzón","cruce"],"El andén = platform. You wait there for the train."],
+[2,3,"Un billete de ida y ___.","","vuelta",["salida","parada","calle"],"Ida y vuelta = round trip (outward and return)."],
+[2,3,"¿Cuál NO es un medio de transporte?","","la acera",["el metro","el tranvía","el taxi"],"La acera = pavement, part of the street. Metro, tranvía (tram) and taxi are transport."],
+// World 3: LAS VACACIONES
+[3,1,"¿Cómo se llama esto en español?","🧳","la maleta",["la mochila","el bolso","la caja"],"Maleta = suitcase. Mochila = backpack, bolso = bag, caja = box."],
+[3,1,"¿Cómo se llama este lugar en español?","🏖️","la playa",["la montaña","el río","el campo"],"Playa = beach. Montaña = mountain, río = river, campo = countryside."],
+[3,2,"¿Cómo se llama esto en español?","✈️","el avión",["el barco","el tren","el autobús"],"Avión = plane. Barco = boat, tren = train, autobús = bus."],
+[3,2,"Para viajar a otro país necesitas el ___.","","pasaporte",["paraguas","pijama","helado"],"El pasaporte = passport. You show it at the airport and at borders."],
+[3,3,"Antes de viajar, quiero ___ una habitación en el hotel.","","reservar",["perder","vender","cerrar"],"Reservar = to book. You book a room before your trip."],
+[3,1,"¿Qué tiempo hace?","☀️","Hace sol",["Llueve","Nieva","Hace frío"],"Hace sol = it is sunny. Llueve = it rains, nieva = it snows."],
+[3,1,"¿Qué tiempo hace?","🌧️","Llueve",["Hace sol","Nieva","Hace viento"],"Llueve = it is raining. Nieva = it snows, hace viento = it is windy."],
+[3,2,"¿Qué tiempo hace?","☁️","Está nublado",["Hace sol","Llueve","Hace calor"],"Nublado = cloudy. Hace sol = sunny, llueve = it rains."],
+[3,2,"En verano, en el sur de España hace mucho ___.","","calor",["frío","hielo","nieve"],"Hace calor = it is hot. Summer in southern Spain is very hot."],
+[3,3,"En las montañas, en invierno, a veces ___ y todo se pone blanco.","❄️","nieva",["llueve","hace calor","hace sol"],"Nieva = it snows. Snow makes everything white."],
+[3,1,"¿Cómo se llama esto en español?","👕","la camiseta",["la falda","el abrigo","la chaqueta"],"Camiseta = T-shirt. Falda = skirt, abrigo = coat, chaqueta = jacket."],
+[3,1,"¿Cómo se llama esto en español?","👖","los pantalones",["la falda","la camisa","los zapatos"],"Pantalones = trousers (plural in Spanish). Falda = skirt, camisa = shirt, zapatos = shoes."],
+[3,2,"¿Cómo se llama esto en español?","🧣","la bufanda",["la gorra","el cinturón","la corbata"],"Bufanda = scarf, worn around the neck in winter. Gorra = cap, cinturón = belt, corbata = tie."],
+[3,2,"¿Cómo se llama esto en español?","👗","el vestido",["la falda","la camisa","el abrigo"],"Vestido = dress. Falda = skirt, camisa = shirt, abrigo = coat."],
+[3,3,"En la playa, en verano, llevo el ___.","","bañador",["abrigo","jersey","bufanda"],"El bañador = swimsuit or swimming trunks. Abrigo, jersey and bufanda are winter clothes."],
+// World 4: LA ESCUELA
+[4,1,"¿Cómo se llama esto en español?","🎒","la mochila",["la maleta","el bolso","la caja"],"Mochila = backpack, used to carry books to school. Maleta = suitcase."],
+[4,1,"¿Cómo se llama esto en español?","✏️","el lápiz",["el bolígrafo","la goma","la regla"],"Lápiz = pencil. Bolígrafo = pen, goma = eraser, regla = ruler."],
+[4,1,"¿Cómo se llama esto en español?","📖","el libro",["el cuaderno","la revista","el periódico"],"Libro = book. Cuaderno = notebook, revista = magazine, periódico = newspaper."],
+[4,2,"Está en la pared de la clase y el profesor escribe en ella con tiza.","","la pizarra",["la mesa","la ventana","la puerta"],"Pizarra = blackboard or whiteboard. The teacher writes on it."],
+[4,3,"Tengo que hacer los ___ antes de jugar.","","deberes",["vacaciones","recreos","horarios"],"Los deberes = homework. Recreo = break, vacaciones = holidays."],
+[4,1,"La madre de mi madre es mi ___.","","abuela",["tía","hermana","prima"],"Abuela = grandmother. Tía = aunt, hermana = sister, prima = female cousin."],
+[4,2,"El hijo de mi tío es mi ___.","","primo",["hermano","sobrino","abuelo"],"Primo = male cousin, the son of your aunt or uncle. Sobrino = nephew."],
+[4,3,"El hermano de mi marido es mi ___.","","cuñado",["sobrino","primo","suegro"],"Cuñado = brother-in-law. Suegro = father-in-law, sobrino = nephew."],
+[4,2,"La hija de mi hermano es mi ___.","","sobrina",["prima","nieta","tía"],"Sobrina = niece. Prima = cousin, nieta = granddaughter, tía = aunt."],
+[4,2,"Mi padre y mi madre son mis ___.","","padres",["abuelos","tíos","hermanos"],"Padres = parents. Abuelos = grandparents, tíos = aunts and uncles."],
+[4,1,"¿Qué haces con esto?","⚽","jugar al fútbol",["jugar al tenis","jugar al baloncesto","jugar al golf"],"Jugar al fútbol = to play football (soccer). The ball shown is a football."],
+[4,1,"¿Qué hace esta persona?","🏊","nadar",["correr","bailar","cantar"],"Nadar = to swim. Correr = to run, bailar = to dance, cantar = to sing."],
+[4,2,"Hacer un cuadro con colores y pincel es ___.","🎨","pintar",["cocinar","bailar","escribir"],"Pintar = to paint. Cocinar = to cook, bailar = to dance, escribir = to write."],
+[4,2,"Me gusta ___ la guitarra.","🎸","tocar",["jugar","hacer","cantar"],"Tocar un instrumento = to play an instrument. Jugar is used for games and sports."],
+[4,3,"En mi tiempo libre me gusta ___ series en el sofá.","📺","ver",["oír","hacer","tocar"],"Ver series = to watch series. Oír = to hear."],
+// World 5: LA VIDA COTIDIANA
+[5,1,"¿Cómo se llama esto en español?","🛏️","la cama",["el sofá","la mesa","el armario"],"Cama = bed. Sofá = sofa, mesa = table, armario = wardrobe."],
+[5,1,"¿Cómo se llama esto en español?","🛋️","el sofá",["la cama","la silla","la mesa"],"Sofá = sofa. Cama = bed, silla = chair, mesa = table."],
+[5,2,"Es el mueble donde guardas la ropa.","","el armario",["la nevera","el espejo","la lámpara"],"Armario = wardrobe. Nevera = fridge, espejo = mirror, lámpara = lamp."],
+[5,2,"¿Cómo se llama esto en español?","🚪","la puerta",["la ventana","la pared","la escalera"],"Puerta = door. Ventana = window, pared = wall, escalera = stairs."],
+[5,1,"Una persona que trabaja en el hospital y cura a los enfermos es el ___.","","médico",["abogado","cocinero","profesor"],"Médico = doctor. Abogado = lawyer, cocinero = cook, profesor = teacher."],
+[5,2,"¿Cómo se llama esto en español?","💊","la pastilla",["el jarabe","la venda","la receta"],"Pastilla = pill. Jarabe = syrup, venda = bandage, receta = prescription."],
+[5,2,"Me duele la ___ y no puedo tragar bien.","","garganta",["rodilla","espalda","mano"],"Garganta = throat. Rodilla = knee, espalda = back, mano = hand."],
+[5,1,"¿Cómo se llama esto en español?","🦷","el diente",["la oreja","la uña","la lengua"],"Diente = tooth. Oreja = ear, uña = nail, lengua = tongue."],
+[5,3,"En una tienda de ropa me pruebo la ropa en el ___.","","probador",["ascensor","almacén","pasillo"],"El probador = fitting room. You try clothes on there before buying."],
+[5,1,"Pago en la ___ del supermercado.","","caja",["talla","bolsa","tienda"],"La caja = checkout or till. You pay there."],
+[5,3,"En enero hay ___ y todo es más barato.","","rebajas",["tallas","bolsas","cajas"],"Las rebajas = sales. Prices go down."],
+[5,2,"¿Qué ___ usas, la M o la L?","","talla",["precio","color","marca"],"La talla = clothing size, like S, M or L."],
+[5,1,"Por la noche, antes de dormir, me ___ en la cama.","","acuesto",["levanto","despierto","visto"],"Acostarse = to go to bed. Levantarse = to get up, despertarse = to wake up."],
+[5,2,"Me ___ con agua y jabón en el baño.","🚿","ducho",["acuesto","despierto","levanto"],"Ducharse = to take a shower. Acostarse = to go to bed."],
+[5,3,"Después de comer, me ___ los dientes.","","cepillo",["peino","afeito","pongo"],"Cepillarse los dientes = to brush your teeth. Peinarse = to comb your hair."],
+// World 6: EL DESAFÍO FINAL
+[6,1,"¿Cómo se llama esto en español?","🏠","la casa",["la tienda","el hotel","la escuela"],"Casa = house or home. Tienda = shop, hotel = hotel, escuela = school."],
+[6,1,"¿Cómo se llama esto en español?","🍓","la fresa",["la uva","la pera","el limón"],"Fresa = strawberry. Uva = grape, pera = pear, limón = lemon."],
+[6,1,"Lo contrario de día es ___.","🌙","la noche",["la tarde","la mañana","el lunes"],"La noche = night, the opposite of day. Tarde = afternoon or evening."],
+[6,2,"¿Cómo se llama esto en español?","🔑","la llave",["la puerta","la ventana","la cuerda"],"Llave = key. Puerta = door, ventana = window, cuerda = rope."],
+[6,3,"¿Cuál NO es un miembro de la familia?","","el vecino",["la tía","el primo","la abuela"],"Vecino = neighbour, not family. Tía, primo and abuela are relatives."],
+[6,2,"Es el lugar donde se leen libros y se piden prestados.","","la biblioteca",["la panadería","la farmacia","la carnicería"],"Biblioteca = library. Panadería = bakery, farmacia = pharmacy, carnicería = butcher's."],
+[6,2,"¿Cómo se llama esto en español?","⌚","el reloj",["el móvil","las gafas","la cartera"],"Reloj = watch or clock. Móvil = mobile phone, gafas = glasses, cartera = wallet."],
+[6,2,"¿Cómo se llama esto en español?","☂️","el paraguas",["el sombrero","el bolso","la bufanda"],"Paraguas = umbrella, used when it rains. Sombrero = hat, bolso = handbag."],
+[6,2,"¿Cómo se llama esto en español?","🎂","la tarta",["el helado","la galleta","el caramelo"],"Tarta = cake. Helado = ice cream, galleta = biscuit, caramelo = sweet."],
+[6,3,"Lo contrario de barato es ___.","","caro",["rápido","pequeño","pobre"],"Caro = expensive, the opposite of barato (cheap)."],
+[6,3,"¿Cómo se llama esto en español?","👓","las gafas",["los guantes","el sombrero","el reloj"],"Gafas = glasses (always plural). Guantes = gloves, sombrero = hat."],
+[6,3,"En España, la vivienda en un edificio, con vecinos arriba y abajo, es el ___.","","piso",["jardín","garaje","balcón"],"El piso = flat or apartment in Spain. Jardín = garden, garaje = garage, balcón = balcony."],
+[6,3,"¿Cuál NO es una estación del año?","","el domingo",["el verano","la primavera","el otoño"],"Domingo = Sunday, a day of the week. Verano, primavera and otoño are seasons."],
+[6,2,"¿Cómo se llama esto en español?","🧦","los calcetines",["los guantes","las botas","los pantalones"],"Calcetines = socks (plural). Guantes = gloves, botas = boots."],
+[6,3,"En el restaurante, el ___ es lo que tomas al final de la comida, normalmente dulce.","","postre",["entrante","desayuno","bebida"],"El postre = dessert. El entrante is the starter."]
+]);
+
+// GRAMMAR
+QB.add('gra', [
+// World 1: LA COMIDA
+[1,1,"Yo ___ de Madrid y me encanta la paella.","soy",["estoy","tengo","hay"],"Origin uses ser: soy de. Estar is for location or temporary states, not origin."],
+[1,1,"A mí ___ las patatas fritas.","me gustan",["me gusta","gustan","me gustas"],"Gustar agrees with the thing liked: plural 'las patatas' needs gustan. 'Me gusta' is for singular things."],
+[1,1,"En la mesa ___ un plato de sopa.","hay",["es","está","tiene"],"Hay introduces something that exists or is present ('un plato'). Está needs a definite thing like 'el plato'."],
+[1,1,"Mi hermano ___ mucha hambre.","tiene",["es","está","hace"],"Spanish says 'tener hambre', not ser or estar. Hacer is used for weather."],
+[1,1,"Nosotros ___ pizza para cenar todos los viernes.","pedimos",["pidemos","pedemos","pides"],"Pedir is only stem-changing in the singular and in ellos; nosotros keeps the e: pedimos."],
+[1,1,"¿Qué ___ tú de postre? Yo quiero helado.","quieres",["quiere","quiero","queres"],"With tú, querer becomes quieres (e to ie). 'Quiere' is for él/ella/usted."],
+[1,2,"Mis padres ___ el pescado a la carne.","prefieren",["preferen","preferimos","prefiere"],"Preferir changes e to ie in ellos: prefieren. 'Preferen' forgets the stem change."],
+[1,2,"Yo no ___ cocinar, pero mi madre cocina muy bien.","sé",["sabo","conozco","sabe"],"The yo form of saber is irregular: sé. 'Sabo' is a regularisation error."],
+[1,2,"Esta sopa está ___ buena.","muy",["mucho","mucha"],"Muy goes before adjectives and adverbs. Mucho is used with verbs and nouns."],
+[1,2,"A Luis le ___ las manzanas.","encantan",["encanta","encantas","encantamos"],"Encantar agrees with the thing loved: plural 'las manzanas' gives encantan."],
+[1,2,"En este restaurante ___ muchas mesas libres.","hay",["son","es","está"],"Hay is used to say that something exists or is available. Ser and estar do not work with an unspecified quantity."],
+[1,2,"Marta, ¿___ ayudarme a hacer la cena?","puedes",["puede","podes","puedo"],"Talking to Marta (tú) needs puedes. 'Puede' is for usted or él/ella."],
+[1,3,"¿Qué ___ vosotros normalmente de desayuno?","tomáis",["toman","tomas","tomamos"],"Vosotros takes the -áis ending in the present: tomáis. 'Toman' is for ustedes/ellos."],
+[1,3,"—¿Cuánto ___ los tomates? —Dos euros el kilo.","cuestan",["cuesta","costan","cuestamos"],"Costar has a stem change (o to ue) and agrees with the plural 'los tomates': cuestan."],
+// World 2: LA CIUDAD
+[2,1,"Mi madre ___ profesora en un colegio.","es",["está","hay","tiene"],"Professions use ser. Estar describes location or temporary states."],
+[2,1,"El banco ___ en la calle Mayor.","está",["es","hay","son"],"Estar gives the location of a specific, known place. Hay is for unknown things like 'un banco'."],
+[2,1,"Vamos ___ la estación en autobús.","a",["en","de","por"],"Movement towards a destination uses a: vamos a. 'En' marks position, not direction."],
+[2,1,"Hoy ___ cansado después de caminar por la ciudad.","estoy",["soy","hay","tengo"],"Tiredness is a temporary state, so estar. 'Soy cansado' would describe a permanent trait."],
+[2,1,"El museo está ___ la farmacia y el banco.","entre",["en","desde","hasta"],"Entre means between two things. 'En' does not work with two reference points."],
+[2,1,"Mis abuelos son ___ Sevilla.","de",["en","a","desde"],"Origin is expressed with ser de. 'En' would give location, which does not fit 'son'."],
+[2,2,"La panadería está al lado ___ cine.","del",["de","al","en el"],"De + el contracts to del: al lado del cine. 'De cine' is missing the article."],
+[2,2,"Camina ___ la plaza y gira a la izquierda.","hasta",["desde","entre","de"],"Hasta marks the end point of a movement. Desde marks the starting point."],
+[2,2,"La tienda ___ cerrada hoy porque es fiesta.","está",["es","hay","tiene"],"A temporary state like being closed takes estar. Ser would describe a permanent characteristic."],
+[2,2,"Mis vecinos ___ muy simpáticos; siempre saludan a todos.","son",["están","hay","estamos"],"Personality traits use ser. Estar suggests only a temporary mood."],
+[2,2,"Los niños están ___ el parque jugando al fútbol.","en",["a","de","desde"],"Position takes en: están en el parque. 'A' would show movement towards."],
+[2,2,"Ahora mismo Pablo ___ comiendo en un restaurante.","está",["es","hay","tiene"],"The present progressive is formed with estar + gerund. Ser cannot be used with a gerund."],
+[2,3,"Estoy ___ el mapa para llegar al museo.","mirando",["mirar","miro","mirado"],"After estoy you need a gerund (-ando/-iendo): estoy mirando. An infinitive or participle does not work here."],
+[2,3,"La fiesta ___ en el parque, no en mi casa.","es",["hay","tiene","va"],"Ser is used for the location of an event: la fiesta es en el parque. Hay, tiene and va do not fit here."],
+// World 3: LAS VACACIONES
+[3,1,"Hasta ahora nunca ___ en avión.","he viajado",["viajo","viajaba","he viajo"],"'Hasta ahora' links the past to the present, so use the pretérito perfecto: he viajado. 'He viajo' is not a real form."],
+[3,1,"Mañana nosotros ___ a visitar el castillo.","vamos",["fuimos","vais","voy"],"Future plans use ir a + infinitive. 'Fuimos' is past, and 'mañana' points to the future."],
+[3,1,"Ayer ___ a la playa con mis primos.","fui",["voy","iré","vas"],"'Ayer' is a finished time, so use the indefinido: fui. Voy and iré are present and future, and vas is the wrong person."],
+[3,1,"Ya ___ las maletas; podemos salir.","he hecho",["he hacido","he hecha","he hacer"],"Hacer has an irregular participle: hecho. 'Hacido' is a regularisation error."],
+[3,1,"El año pasado ___ a Italia en verano.","viajamos",["hemos viajado","vamos a viajar","viajáis"],"'El año pasado' is a finished period, so use the indefinido: viajamos. Pretérito perfecto does not fit."],
+[3,1,"Este verano voy ___ visitar a mis abuelos.","a",["de","en","que"],"Near-future plans are ir a + infinitive. The other words cannot replace a here."],
+[3,2,"Esta semana mi hermano ___ tres postales a sus amigos.","ha escrito",["ha escribido","escribiste","ha escrita"],"'Esta semana' is unfinished, so use the perfecto, and escribir has the irregular participle escrito. 'Escribiste' is the wrong person."],
+[3,2,"¿Alguna vez ___ el Museo del Prado?","has visto",["has veído","has vista","has ver"],"Ver has an irregular participle: visto. The participle does not change for gender after haber."],
+[3,2,"Ayer ___ en un restaurante muy bueno.","comimos",["comerán","comemos","vamos a comer"],"'Ayer' needs the indefinido: comimos. The other options are present, future or wrong person."],
+[3,2,"¡Ay, he ___ el móvil! Ahora no funciona.","roto",["rompido","rota","rompo"],"Romper has the irregular participle roto. Participles after haber never agree in gender."],
+[3,2,"El año pasado nosotros ___ en Cádiz dos semanas.","estuvimos",["hemos estado","estuvamos","vamos a estar"],"'El año pasado' is finished, so use indefinido: estuvimos. 'Estuvamos' is not a real form."],
+[3,2,"¿Ya ___ de vacaciones, Pedro?","has vuelto",["has volvido","has volver","has vuelta"],"Volver has an irregular participle: vuelto. 'Volvido' is a regularisation error."],
+[3,3,"Anoche mi amigo ___ de la fiesta a las tres.","salió",["saldrá","salimos","salgo"],"'Anoche' is a finished time and the subject is 'mi amigo', so use the indefinido: salió. The others are future, present or the wrong person."],
+[3,3,"Todavía no he ___ la crema solar y me voy a quemar.","puesto",["ponido","pongo","puesta"],"Poner has the irregular participle puesto. It does not agree with 'la crema' after haber."],
+[3,3,"Esta semana mi hermana ___ que trabajar mucho.","ha tenido",["tuve","tengo","tienen"],"'Esta semana' is unfinished, so use perfecto with ella: ha tenido. The other options are the wrong person."],
+// World 4: LA ESCUELA
+[4,1,"Mi hermano es ___ alto que yo.","más",["tan","muy","mucho"],"Comparatives of superiority use más ... que. 'Tan' needs como, not que."],
+[4,1,"Ana es tan simpática ___ su hermana.","como",["que","de","a"],"The structure is tan + adjective + como for equality. 'Que' is used with más/menos."],
+[4,1,"Mi nota es ___ que la tuya: yo tengo un 9 y tú un 5.","mejor",["más buena","mejores","más bien"],"Bueno has an irregular comparative: mejor. 'Más bueno' is incorrect."],
+[4,1,"Hay que ___ mucho para aprobar el examen.","estudiar",["estudio","estudia","estudiando"],"Hay que is always followed by an infinitive. Conjugated forms do not work."],
+[4,1,"Ayer ___ un examen de matemáticas.","tuvimos",["tenemos","tenimos","tuvemos"],"'Ayer' needs the indefinido, and tener is irregular: tuvimos. 'Tenemos' is present."],
+[4,2,"Mi hermana tiene 15 años y yo 12. Ella es ___ que yo.","mayor",["peor","mejor","más alto"],"Mayor is the comparative of 'older' (mayor que). Mejor means better, peor worse, and 'más alto' does not agree with 'ella'."],
+[4,2,"Estudio español ___ viajar a Argentina.","para",["por","de","a"],"Para expresses purpose or goal before an infinitive. Por would express cause."],
+[4,2,"Gracias ___ ayudarme con los deberes.","por",["para","de","a"],"'Gracias por' is fixed and expresses the reason for thanking. Para is for purpose."],
+[4,2,"Ayer los alumnos ___ una redacción en clase.","escribieron",["han escrito","escriben","escribimos"],"'Ayer' needs the indefinido, and the subject 'los alumnos' needs ellos: escribieron. Perfecto does not fit a finished day."],
+[4,2,"Para sacar buena nota, yo ___ estudiar más.","tengo que",["hay que","tengo","puedo que"],"Personal obligation uses tener que with a subject (yo tengo que). Hay que is impersonal and cannot have 'yo'."],
+[4,2,"El año pasado mi clase ___ de excursión a Toledo.","fue",["ha ido","va","fuimos"],"'El año pasado' is finished, so use the indefinido. 'Fuimos' would not agree with the singular 'mi clase'."],
+[4,3,"Mi clase tiene ___ alumnos como la tuya.","tantos",["tanto","tantas","tan"],"Tanto agrees with the noun in tanto...como: 'alumnos' is masculine plural, so tantos."],
+[4,3,"Ayer el profesor nos ___ un examen sorpresa.","puso",["ha puesto","pondrá","pone"],"'Ayer' needs the indefinido of poner (irregular): puso. Perfecto is for unfinished times."],
+[4,3,"Mi hermano pequeño es ___ que yo: tiene 8 años y yo 14.","menor",["más menor","menos","mejor"],"Menor already means younger, so it cannot take más. Menos would need an adjective."],
+// World 5: LA VIDA COTIDIANA
+[5,1,"Todos los días me ___ a las siete.","levanto",["levantas","levanta","levantan"],"The pronoun 'me' goes with yo: me levanto. The other forms belong to different people."],
+[5,1,"Mi madre ___ ducha por la mañana.","se",["me","te","le"],"Reflexive pronouns match the subject: ella uses se. 'Me' is for yo."],
+[5,1,"Esta noche nos ___ temprano.","acostamos",["acuestamos","acuesto","acuestan"],"Acostarse changes o to ue only in some persons; nosotros keeps the o: acostamos."],
+[5,1,"—¿Dónde está la llave? —___ tengo yo.","La",["Lo","Las","Le"],"A direct object pronoun must match 'la llave': feminine singular, so la. It goes before the verb."],
+[5,1,"De pequeño, yo ___ en un pueblo pequeño y todos nos conocíamos.","vivía",["vivo","he vivido","vivió"],"Describing a situation in the past uses the imperfecto: vivía. Perfecto does not fit 'de pequeño'."],
+[5,2,"—¿Compras las manzanas? —Sí, ___ compro ahora.","las",["los","la","le"],"'Las manzanas' is feminine plural, so the pronoun is las, placed before the verb."],
+[5,2,"Tú ___ lavas las manos antes de comer.","te",["se","me","nos"],"Reflexive pronouns match the subject: tú takes te."],
+[5,2,"Cuando era niña, ___ al parque todos los días.","iba",["fui","voy","he ido"],"'Todos los días' in a past habit uses the imperfecto: iba. The indefinido describes one finished event."],
+[5,2,"Mi abuelo era muy simpático y ___ el pelo blanco.","tenía",["tuvo","tiene","ha tenido"],"Descriptions of a past situation use the imperfecto, matching 'era'. Tuvo suggests a single completed action."],
+[5,2,"Vosotros ___ a las ocho, ¿verdad?","os levantáis",["se levantan","te levantas","nos levantamos"],"Vosotros takes the pronoun os and the -áis ending. The other options match other subjects."],
+[5,2,"—¿Ves a Pedro hoy? —No, no ___ veo desde el lunes.","lo",["la","los","me"],"Pedro is masculine singular, so the pronoun is lo, placed before the conjugated verb."],
+[5,3,"Antes ___ mucho en la oficina, pero ahora trabajo en casa.","trabajaba",["trabajé","he trabajado","trabajo"],"'Antes' contrasted with 'ahora' signals a past habit: imperfecto. Present trabajo does not fit the past."],
+[5,3,"—¿Y tus zapatos nuevos? —___ compré ayer en el centro.","Los",["Las","Lo","Les"],"'Zapatos' is masculine plural, so the pronoun is los. Las is feminine plural."],
+[5,3,"Cuando yo era pequeño, mi abuela ___ muy simpática y siempre nos preparaba tortilla.","era",["eras","eran","somos"],"A past description uses the imperfecto: era, matching 'mi abuela'. The other options are the wrong person."],
+// World 6: EL DESAFÍO FINAL
+[6,1,"Mi hermano y yo ___ muy deportistas.","somos",["estamos","tenemos","hay"],"Characteristics use ser, and 'mi hermano y yo' needs nosotros: somos."],
+[6,1,"Ayer ___ al cine con mis amigos.","fuimos",["vamos","iremos","vais"],"'Ayer' needs the indefinido: fuimos. Vamos is present, iremos is future and vais is the wrong person."],
+[6,1,"A mis padres ___ la música clásica.","les gusta",["les gustan","le gusta","nos gusta"],"Gustar agrees with the thing liked (singular 'la música'), and 'a mis padres' needs les. 'Le' is for one person."],
+[6,2,"Esta semana ___ mucho y estoy muy cansado.","he trabajado",["trabajaste","trabajan","trabajaban"],"'Esta semana' is unfinished and the subject is yo (estoy cansado), so use the perfecto: he trabajado. The others are other persons."],
+[6,2,"Mañana ___ a ir de compras al centro.","voy",["fui","iba","he ido"],"Future plans use ir a + infinitive, so you need present ir: voy a ir. The past forms do not work with mañana."],
+[6,2,"Madrid está ___ de Barcelona: son seiscientos kilómetros.","lejos",["cerca","entre","delante"],"Six hundred kilometres is a long distance, so lejos de. 'Cerca de' means near."],
+[6,2,"Este restaurante es mejor ___ el de ayer.","que",["como","de","más"],"Comparisons use mejor que. 'Como' is only for equality with tan/tanto."],
+[6,2,"—¿Has visto mis gafas? —Sí, ___ he dejado en tu habitación.","las",["los","la","les"],"'Gafas' is feminine plural, so the pronoun is las, placed before the auxiliary he."],
+[6,3,"Cuando era pequeño, mis padres y yo ___ a la playa cada verano.","íbamos",["iremos","vamos","hemos ido"],"'Cuando era pequeño' and 'cada verano' signal a past habit: imperfecto. The other options are future or present/perfect."],
+[6,3,"Esta mañana los alumnos ___ el examen.","han hecho",["hiciste","hacéis","han hecha"],"'Esta mañana' is within an unfinished day, so use the perfecto: han hecho. Participles never agree after haber."],
+[6,3,"Mañana no vamos de excursión ___ la lluvia.","por",["para","de","a"],"Por expresses cause: because of the rain. Para expresses purpose or destination."],
+[6,3,"Mi abuelo me ___ un cuento todas las noches cuando era niño.","contaba",["contaste","ha contado","cuenta"],"'Todas las noches' with 'cuando era niño' describes a past habit: imperfecto. The other options are the wrong person or tense."],
+[6,3,"Anoche mis amigos y yo ___ muy tarde.","nos acostamos",["nos acostaremos","se acostó","me acosté"],"'Anoche' is a single finished event: indefinido, with nos for nosotros. The others are future or the wrong person."],
+[6,3,"Esta mañana mi profesor nos ha ___ que no hay clase mañana.","dicho",["decido","dicha","decir"],"Decir has the irregular participle dicho. After haber the participle is invariable."]
+]);
+
+// REAL-LIFE SPANISH
+QB.add('rea', [
+// World 1: LA COMIDA
+[1,1,"☕","En un bar. Quieres un café con leche. ¿Qué le dices al camarero?","Un café con leche, por favor.",["Yo soy un café con leche, gracias.","Dame café con leche ya, tío.","Me gusta mucho el café, adiós."],"'Un café con leche, por favor' is the standard polite order. 'Dame... ya' is rude to a waiter."],
+[1,1,"🍽️","En un restaurante. Quieres ver la carta. ¿Qué le dices al camarero?","¿Me trae la carta, por favor?",["¿Dónde vive la carta, por favor?","Yo quiero la carta de mi casa.","La carta es muy bonita, gracias."],"'¿Me trae la carta?' politely asks for the menu. The others do not ask for anything."],
+[1,1,"🛒","En el mercado. Quieres un kilo de naranjas. ¿Qué dices?","Un kilo de naranjas, por favor.",["Vendo un kilo de naranjas, gracias.","Las naranjas están muy lejos, por favor.","¿Cuántos años tienen las naranjas?"],"You ask for what you want with the item plus 'por favor'. 'Vendo' means you are the seller."],
+[1,1,"💳","En una tienda de comida. Quieres pagar con tarjeta. ¿Qué preguntas?","¿Puedo pagar con tarjeta?",["¿Puedo comer con tarjeta?","¿Dónde está mi tarjeta de pagar?","Pago tarjeta yo mucho."],"'¿Puedo pagar con tarjeta?' is the natural question. 'Comer' changes the meaning completely."],
+[1,2,"🥜","Eres alérgico a los frutos secos. Estás en un restaurante. ¿Qué le preguntas al camarero?","¿Este plato lleva frutos secos? Soy alérgico.",["Este plato es alérgico a mí, ¿vale?","Me gustan los frutos secos, ¿tiene alérgico?","¿Tienes alérgico a los frutos secos tú?"],"'Llevar' means 'to contain' in food, and 'soy alérgico' states your allergy. A dish cannot be allergic to you."],
+[1,2,"🍻","En un bar de tapas con amigos. Quieres unas patatas bravas para compartir. ¿Qué dices?","Ponme unas patatas bravas para compartir, por favor.",["Yo estoy unas patatas bravas para compartir.","Quiero compartir con las patatas bravas.","Tengo patatas bravas para compartir, ¿vale?"],"'Ponme...' is very natural in Spanish bars. 'Tengo...' says you already have them."],
+[1,2,"🛒","En el supermercado no encuentras la leche. Preguntas a una empleada. ¿Qué le dices?","Perdone, ¿dónde está la leche, por favor?",["Perdone, ¿cuándo es la leche?","Perdona, tú eres la leche, ¿verdad?","Perdone, la leche está en mi casa."],"'¿Dónde está...?' asks for a location. '¿Cuándo es...?' asks about time."],
+[1,2,"🍺","El camarero pregunta: '¿Qué quieren tomar?' Quieres un zumo y tu amigo quiere una cerveza. ¿Qué respondes?","Un zumo y una cerveza, por favor.",["Un zumo y una cerveza, me gusta.","Queremos tomar el zumo cerveza.","Sí, gracias, tomo mucho."],"Simply list the drinks and add 'por favor'. 'Me gusta' does not place an order."],
+[1,3,"🍲","En un restaurante, la sopa está fría. ¿Qué le dices al camarero?","Perdone, la sopa está fría. ¿Puede calentarla, por favor?",["Perdone, la sopa es frío. ¿Puedes calentar?","Tu sopa está fría, cámbiala ahora.","La sopa tiene frío, me voy a casa."],"Use 'estar' for temperature and usted with a waiter. The second option is rude and uses the wrong register."],
+[1,3,"📞","Llamas a un restaurante. Quieres reservar una mesa para cuatro personas a las nueve. ¿Qué dices?","Quería reservar una mesa para cuatro personas a las nueve.",["Reservo cuatro personas en mi mesa nueve.","¿Hay cuatro mesas para las nueve personas?","Tengo una mesa de cuatro, a las nueve."],"'Quería reservar...' is the polite phone formula. 'Tengo una mesa' says you already have one."],
+// World 2: LA CIUDAD
+[2,1,"🗺️","Buscas la estación. Preguntas a una señora mayor. ¿Qué le dices?","Perdone, ¿dónde está la estación?",["Perdona, ¿qué hora es la estación?","Señora, yo estación quiero ir.","Hola, estación, ¿dónde estás?"],"With an older stranger use 'perdone' and '¿dónde está...?'. '¿Qué hora es?' asks the time."],
+[2,1,"🚌","Subes al autobús. Quieres un billete. ¿Qué le dices al conductor?","Un billete, por favor.",["Yo tengo un billete, gracias.","¿Cuántos años tiene el billete?","Quiero un autobús para mi casa."],"Ask for the ticket with 'por favor'. The other options do not request a ticket."],
+[2,1,"🚕","Subes a un taxi. Quieres ir al aeropuerto. ¿Qué dices?","Al aeropuerto, por favor.",["El aeropuerto está en el taxi.","Yo soy aeropuerto, por favor.","¿Cuánto es el aeropuerto?"],"Say the destination with 'a' and 'por favor'. '¿Cuánto es...?' asks about a price."],
+[2,1,"🗺️","Un señor te explica el camino: 'Todo recto y luego a la derecha.' Lo has entendido. ¿Qué dices?","Vale, todo recto y luego a la derecha. Muchas gracias.",["Vale, todo recto y luego a la izquierda, gracias.","Vale, siempre a la derecha y luego recto.","Vale, no recto y luego derecha, adiós."],"Repeat the directions correctly to confirm. The other options change the directions."],
+[2,2,"🚇","En la taquilla del metro. Quieres un billete de diez viajes. ¿Qué dices?","Quería un billete de diez viajes, por favor.",["Quiero viajar diez billetes, ¿vale?","Tengo diez viajes de billete metro.","¿Diez billetes viajan en metro?"],"'Quería un billete de...' is a polite way to buy something. The others mix up the words."],
+[2,2,"🏛️","Quieres saber si el museo está lejos. Preguntas a un chico joven. ¿Qué le dices?","Oye, ¿el museo está lejos de aquí?",["Oye, ¿el museo es lejos de aquí?","Oye, ¿tú estás lejos del museo ahora?","Oye, ¿cuándo está lejos el museo de ti?"],"Use 'estar' for location and distance. 'Ser lejos' is a common learner error."],
+[2,2,"🗺️","Una persona explica el camino muy rápido y no entiendes. ¿Qué le dices?","Perdone, ¿puede hablar más despacio, por favor?",["Perdone, ¿puede hablar más caro, por favor?","No, no hablo, adiós y gracias.","Perdone, ¿puedo hablar más rápido?"],"'Más despacio' means slower. 'Más rápido' would make it harder, and 'caro' means expensive."],
+[2,2,"🚆","En la estación. Quieres un billete de ida y vuelta a Sevilla. ¿Qué dices?","Un billete de ida y vuelta a Sevilla, por favor.",["Un billete de ir y venir a Sevilla, por favor.","Un billete de ida y vuelta desde Sevilla, por favor.","Dos billetes, ida y venida, Sevilla gracias."],"'Ida y vuelta' is the fixed expression for a return ticket. 'Desde Sevilla' means you start there."],
+[2,3,"🙋","Un turista te pregunta en la calle: '¿Sabe dónde hay una farmacia?' Tú no lo sabes. ¿Qué respondes?","Lo siento, no lo sé. No soy de aquí.",["Lo siento, no lo sé. No soy aquí.","Sí, la farmacia no sabe, adiós.","Claro, está en mi casa, todo recto."],"'No soy de aquí' means 'I'm not from here'. Without 'de' the sentence is wrong."],
+[2,3,"📱","Has perdido el móvil en el metro. Hablas con un empleado. ¿Qué le dices?","Perdone, he perdido mi móvil. ¿Puede ayudarme?",["Perdone, he perdido a mi móvil. ¿Puedo ayudarle?","Hola, mi móvil perdido es. ¿Ayuda?","Mi móvil ha ganado y no lo veo."],"'Perder' takes no 'a' with objects, and '¿Puede ayudarme?' asks for help. '¿Puedo ayudarle?' reverses the roles."],
+// World 3: LAS VACACIONES
+[3,1,"🏨","Llegas al hotel. Tienes una reserva. ¿Qué le dices a la recepcionista?","Buenas tardes, tengo una reserva a nombre de García.",["Buenas tardes, soy una reserva de García.","Buenas tardes, ¿tiene una reserva a mi nombre?","Buenas noches, quiero reserva nombre."],"'Tengo una reserva a nombre de...' is the standard check-in phrase. 'Soy una reserva' is a literal-translation error."],
+[3,1,"🌧️","Un amigo dice: 'Hoy llueve mucho.' ¿Qué respondes?","Sí, qué pena. No podemos ir a la playa.",["Sí, hace mucho sol. ¡Vamos a la playa!","Sí, estoy lloviendo mucho hoy.","No, yo llueve poco en mi casa."],"You agree and react to the rain. The first option contradicts the weather, and 'estoy lloviendo' is ungrammatical."],
+[3,1,"✈️","En el aeropuerto no encuentras la puerta de embarque. Preguntas a un empleado. ¿Qué dices?","Perdone, ¿dónde está la puerta de embarque?",["Perdone, ¿cuándo es mi puerta de embarque?","Perdone, ¿embarco la puerta, por favor?","Perdone, mi puerta es muy grande hoy."],"'¿Dónde está...?' asks for a place. '¿Cuándo...?' asks for a time."],
+[3,1,"🎁","En una tienda de recuerdos. Quieres saber el precio de un imán. ¿Qué preguntas?","¿Cuánto cuesta este imán?",["¿Cuántos son este imán?","¿Qué hora es este imán?","¿Cómo está este imán?"],"'¿Cuánto cuesta...?' asks for the price. The others use the wrong question words."],
+[3,2,"🏨","El aire acondicionado de tu habitación no funciona. Llamas a recepción. ¿Qué dices?","Hola, el aire acondicionado de mi habitación no funciona.",["Hola, el aire acondicionado está funcionando muy bien.","Hola, mi habitación no tiene aire, es muy rico.","Hola, mi aire acondicionado es muy bueno y funciona."],"'No funciona' reports the problem. The distractors say it works well."],
+[3,2,"🚲","Quieres alquilar una bicicleta por dos horas. ¿Qué le dices al empleado?","Quería alquilar una bicicleta por dos horas.",["Alquilo mi bicicleta por dos horas, ¿vale?","Quiero comprar una bicicleta alquilada, dos horas.","Mi bicicleta es de alquilar dos horas."],"'Quería alquilar...' is a polite request. 'Alquilo mi bicicleta' means you are the one renting it out."],
+[3,2,"🚉","Estás en la estación. Quieres saber a qué hora sale el tren a Valencia. ¿Qué preguntas?","Perdone, ¿a qué hora sale el tren a Valencia?",["Perdone, ¿qué hora es el tren a Valencia?","Perdone, ¿cuántas horas sale el tren a Valencia?","Perdone, ¿dónde sale a Valencia tren hora?"],"'¿A qué hora sale...?' is the normal way to ask about departure time."],
+[3,2,"🏨","Es tu último día en el hotel. Quieres saber a qué hora tienes que dejar la habitación. ¿Qué preguntas?","¿A qué hora tengo que dejar la habitación?",["¿A qué hora dejo la habitación a mí?","¿Cuánto tengo que dejar la habitación?","¿Dónde es la hora de mi habitación?"],"'Tener que + infinitive' expresses obligation. The others use wrong words or structure."],
+[3,3,"📞","Llamas a un hotel. Quieres una habitación doble para tres noches. ¿Qué dices?","Quería reservar una habitación doble para tres noches.",["Tengo una habitación doble para tres noches.","Reservo tres noches de la habitación doble en mi casa.","Quiero reservar una habitación doble por tres noches ayer."],"'Quería reservar...' is the polite phone formula. 'Tengo una habitación' means you offer one."],
+[3,3,"🧳","Llegas al aeropuerto, pero tu maleta no ha llegado. Hablas con una empleada. ¿Qué le dices?","Perdone, mi maleta no ha llegado. ¿Qué puedo hacer?",["Perdone, mi maleta no llega yo. ¿Qué hago ella?","Perdone, he llegado sin maleta. ¿Es suya?","¡Mi maleta es muy grande! ¿Tiene usted una?"],"You report the problem and ask what to do. The distractors do not report the lost luggage."],
+// World 4: LA ESCUELA
+[4,1,"👋","Conoces a una compañera nueva en clase. ¿Qué le dices?","Hola, me llamo Ana. ¿Y tú?",["Hola, yo llamo Ana. ¿Y usted?","Hola, soy llamo Ana. ¿Cómo tú?","Hola, me llamas Ana. ¿Y tú?"],"'Me llamo' is the reflexive form for 'my name is'. With a classmate use tú."],
+[4,1,"📞","Llamas por teléfono a tu amigo Pablo. Contesta él. ¿Qué dices?","Hola, Pablo, soy Marta. ¿Qué tal?",["Hola, Pablo, eres Marta. ¿Cómo está?","Hola, Pablo, yo estoy Marta aquí.","Adiós, Pablo, soy Marta. ¡Hasta luego!"],"On the phone you say 'soy + name'. 'Adiós' is a goodbye, not a greeting."],
+[4,1,"🏫","En clase no entiendes al profesor. ¿Qué le dices?","¿Puede repetir, por favor?",["¿Puedo repetir, por favor?","Repite eso otra vez, no me gusta.","Más repetir, profesor, otra vez."],"'¿Puede repetir, por favor?' politely asks someone to say it again. '¿Puedo repetir?' means you want to repeat."],
+[4,1,"🎉","Una amiga te dice: '¿Vienes a mi fiesta el sábado?' Quieres ir. ¿Qué respondes?","¡Sí, claro! Muchas gracias.",["No, gracias, no quiero ir.","Sí, voy a mi fiesta el sábado.","Sí, no puedo. ¡Qué fiesta!"],"Accept an invitation with 'sí, claro' and thank her. The others refuse or make no sense."],
+[4,2,"🎬","Un amigo te invita al cine, pero tienes que estudiar. ¿Qué respondes?","Lo siento, hoy no puedo. Tengo que estudiar.",["No quiero. El cine es horrible.","Lo siento, hoy no puedo. Tengo que estudiado.","Sí, no puedo. ¡Vamos al cine!"],"Decline politely with 'lo siento' and a reason. The first option is rude."],
+[4,2,"🤝","Quieres quedar con una amiga mañana a las cinco en la plaza. ¿Qué le dices?","¿Quedamos mañana a las cinco en la plaza?",["¿Quedamos ayer a las cinco en la plaza?","Me quedo mañana a las cinco en la plaza sola.","¿Quedo mañana a las cinco la plaza yo?"],"'¿Quedamos...?' is the natural way to suggest a meeting. 'Ayer' is the wrong time."],
+[4,2,"⚽","Quieres conocer mejor a un compañero. Le preguntas por sus aficiones. ¿Qué dices?","¿Qué te gusta hacer en tu tiempo libre?",["¿Qué eres hacer en tu tiempo libre?","¿Cuánto te gusta tiempo libre hacer?","¿Qué hora hacer en tu tiempo libre?"],"'¿Qué te gusta hacer...?' is the standard question about hobbies."],
+[4,2,"📞","Llamas a casa de un amigo. Contesta su madre. Quieres hablar con Luis. ¿Qué dices?","Buenas tardes, ¿puedo hablar con Luis, por favor?",["Buenas tardes, ¿soy Luis, por favor?","Buenas tardes, hablo Luis, ¿vale?","Buenas tardes, ¿puedo hablar de Luis, por favor?"],"'¿Puedo hablar con...?' is the phone formula. 'Hablar de' means to talk about him."],
+[4,3,"🏫","En clase no sabes cómo se dice 'window' en español. Preguntas al profesor. ¿Qué dices?","¿Cómo se dice 'window' en español?",["¿Cómo es 'window' en español de mí?","¿Qué se dice 'window' el español?","¿Quién dice 'window' en español?"],"'¿Cómo se dice...?' is the fixed question for asking a word."],
+[4,3,"🍽️","Un compañero te invita a cenar el viernes, pero ya tienes otro plan. Quieres proponer el sábado. ¿Qué dices?","Gracias por la invitación, pero el viernes no puedo. ¿Y el sábado?",["Gracias, pero no quiero cenar contigo ni el sábado.","El viernes no puedo. Cena el sábado tú.","Gracias por la invitación, el viernes puedo no. ¿Y el sábado?"],"Thank, decline, and offer an alternative. The others are rude or ungrammatical."],
+// World 5: LA VIDA COTIDIANA
+[5,1,"💊","Te duele la cabeza. Vas a la farmacia. ¿Qué le dices al farmacéutico?","Buenos días, me duele la cabeza.",["Buenos días, tengo dolor en la cabeza mala.","Buenos días, mi cabeza duele a mí.","Buenos días, duelo la cabeza."],"'Me duele la cabeza' is the natural way to say your head hurts. 'Doler' works with 'me, te, le'."],
+[5,1,"🏥","Estás en el médico. Tienes fiebre y te duele la garganta. ¿Qué dices?","Doctor, tengo fiebre y me duele la garganta.",["Doctor, soy fiebre y duelo la garganta.","Doctor, tengo fiebre y la garganta soy.","Doctor, estoy fiebre y duele garganta me."],"'Tengo fiebre' uses tener for illness. 'Ser' and 'estar' do not work here."],
+[5,1,"👕","En una tienda. La camisa es pequeña. Quieres una talla más grande. ¿Qué preguntas?","¿Tiene esta camisa en una talla más grande?",["¿Tiene esta camisa en una talla más pequeña?","¿Eres esta camisa en una talla grande?","¿Tiene mi camisa grande en la tienda?"],"'Más grande' means bigger. 'Más pequeña' would make it even smaller."],
+[5,1,"🚌","Pisas sin querer a una persona en el autobús. ¿Qué dices?","¡Perdone! Lo siento mucho.",["¡Perdone! Eres muy lento.","¡Gracias! Es mi pie.","¡Hola! Te pisas el pie."],"Apologise with 'perdone' and 'lo siento'. The other options do not apologise."],
+[5,2,"👖","En una tienda. Quieres probarte unos pantalones. ¿Qué preguntas a la dependienta?","¿Puedo probarme estos pantalones?",["¿Puedo probar estos pantalones comer?","¿Puedo comprarme estos pantalones gratis?","¿Pruebo yo pantalones tú?"],"'Probarse' means to try on clothes. The distractors are ungrammatical or ask for something else."],
+[5,2,"🏠","Tu vecina mayor te saluda por la mañana: 'Buenos días, ¿qué tal?' ¿Qué respondes?","Buenos días. Muy bien, gracias. ¿Y usted?",["Buenas noches. Muy bien, gracias. ¿Y usted?","Hola, tío. Pues mal, ¿y tú, abuela?","Buenos días. Me llamo bien, gracias. ¿Y usted?"],"Answer with the right greeting for the time and use usted with an older neighbour."],
+[5,2,"📞","Llamas al centro de salud para pedir cita. ¿Qué dices?","Buenos días, quería pedir una cita con el médico.",["Buenos días, soy una cita con el médico.","Buenos días, quiero pedir un médico en cita mía.","Buenos días, pido cita médico, ¿qué tal?"],"'Quería pedir una cita' is polite and clear. The others are unnatural word-for-word forms."],
+[5,2,"💊","El farmacéutico te da unas pastillas. Quieres saber cuántas tienes que tomar al día. ¿Qué preguntas?","¿Cuántas pastillas tengo que tomar al día?",["¿Cuántas pastillas soy al día?","¿Cuándo tomo la farmacia al día?","¿Qué pastillas tienes tomar día?"],"'¿Cuántas...?' asks for quantity, and 'tengo que tomar' expresses obligation."],
+[5,3,"🚇","Llegas tarde a una cita con un amigo porque el metro ha parado. ¿Qué le dices?","Perdona el retraso. El metro ha parado.",["No pasa nada. El metro ha parado.","Perdona, he llegado antes. El metro ha parado.","Perdonar tarde. Metro parar, yo no."],"You apologise and give the reason. 'No pasa nada' is what the other person would say."],
+[5,3,"🏥","Estás en el médico. Te duele el estómago desde ayer. ¿Qué le dices?","Me duele el estómago desde ayer.",["Me duele el estómago desde mañana.","Me duelo el estómago ayer.","Mi estómago duele desde ayer a mí."],"'Desde ayer' means since yesterday. 'Desde mañana' is a time mistake."],
+// World 6: EL DESAFÍO FINAL
+[6,1,"🍽️","En un restaurante quieres agua sin gas. ¿Qué le dices al camarero?","Un agua sin gas, por favor.",["Un agua sin comer, por favor.","Una agua sin gas, tú eres.","Agua sin gas es mi favorito, por favor."],"Order simply with the item and 'por favor'. 'Un agua' takes 'un' even though it is feminine."],
+[6,1,"🚌","Estás en un autobús lleno. Quieres bajar y un señor bloquea la puerta. ¿Qué le dices?","Perdone, ¿me deja pasar, por favor?",["Perdone, ¡quita de aquí ya!","Perdone, estás en mi casa, ¿verdad?","Perdone, pasar yo quiero casa."],"'¿Me deja pasar?' is a polite request to an adult stranger. The first option is rude."],
+[6,2,"🏨","Hay mucho ruido en la habitación de al lado. Llamas a recepción. ¿Qué dices?","Hola, hay mucho ruido en la habitación de al lado. ¿Puede hacer algo?",["Hola, hago mucho ruido, ¿puede ayudar?","Hola, hay mucho ruido, ¡qué bien! ¡Gracias!","Hola, tengo mucho ruido en mi habitación y es mío."],"You describe the problem and ask for help politely. The others say the wrong thing."],
+[6,2,"🍽️","El camarero trae pescado, pero tú has pedido carne. ¿Qué le dices?","Perdone, yo he pedido carne, no pescado.",["Perdone, yo he pedido pescado, no carne.","Perdone, yo pido carne para el pescado.","Gracias, el pescado es perfecto, adiós."],"You correct the order politely. The second option says the opposite of what happened."],
+[6,2,"📞","Llamas a un amigo para hacer un plan. Quieres ir a la playa el domingo con él. ¿Qué dices?","¿Quieres ir a la playa el domingo conmigo?",["¿Quiero ir a la playa el domingo contigo?","¿Eres la playa el domingo conmigo?","¿Ir playa domingo tú yo mucho?"],"'¿Quieres ir...?' invites your friend. '¿Quiero...?' asks about yourself."],
+[6,2,"👕","Compraste una camiseta ayer, pero es pequeña. Quieres cambiarla. ¿Qué le dices a la dependienta?","Compré esta camiseta ayer. ¿Puedo cambiarla por una talla más grande?",["Compro esta camiseta ayer. ¿Puedo cambiarte por talla?","Esta camiseta es muy bonita, no la cambio.","Quiero comprar la camiseta ayer más pequeña."],"Use the past tense for yesterday and ask to exchange it. The distractors do not request an exchange."],
+[6,3,"✈️","Tu vuelo tiene retraso. Preguntas en el mostrador. ¿Qué dices?","Perdone, ¿sabe a qué hora sale mi vuelo ahora?",["Perdone, ¿sabes a qué hora salgo vuelo?","Perdone, mi vuelo ha llegado a casa ahora.","Perdone, ¿cuándo es el retraso de ti?"],"Use usted with staff and ask about the new departure time."],
+[6,3,"🚕","Vas en un taxi y quieres parar delante de la farmacia. ¿Qué le dices al taxista?","¿Puede parar aquí, delante de la farmacia, por favor?",["¿Puede aparcar mi farmacia aquí delante?","Pare aquí ya, farmacia, rápido.","¿Puede parar aquí, delante de la farmacia, ayer?"],"'¿Puede parar aquí...?' is polite and clear. The others are rude or have a time error."],
+[6,3,"🎉","Con un amigo preparáis el sábado. Él pregunta: '¿Qué hacemos?' Propones cine y después cena. ¿Qué dices?","Podemos ir al cine y después cenar algo.",["Podemos ir cine después a cena algo.","Podemos haber cine y cena en algo.","El cine cenar es mi plan sábado."],"'Podemos + infinitive' is a natural way to propose a plan. The others are ungrammatical."],
+[6,3,"🤒","Una amiga te dice que está enferma y tiene fiebre. ¿Qué respondes?","Vaya, lo siento. Descansa mucho y bebe agua.",["¡Qué bien! Estoy muy contento por ti.","Enhorabuena, estás enferma. ¡Es genial!","Vaya, lo siento. Enferma tú, no yo, adiós."],"Show sympathy and give simple advice. 'Qué bien' and 'enhorabuena' are for good news."]
+]);
+
+// SENTENCE BUILDER
+QB.add('sen', [
+// World 1: LA COMIDA
+[1,1,"quiero un café solo","I want a black coffee.",[],"Querer + noun: the verb comes right after the subject idea."],
+[1,1,"me gusta la paella","I like paella.",["la paella me gusta"],"Gustar uses me before the verb: me gusta + singular noun."],
+[1,2,"no me gustan los tomates","I do not like tomatoes.",["los tomates no me gustan"],"No goes before me; gustan agrees with the plural noun."],
+[1,2,"hoy desayunamos pan con tomate","Today we have bread with tomato for breakfast.",["desayunamos pan con tomate hoy","desayunamos hoy pan con tomate"],"Time words like hoy can go at the start or the end."],
+[1,2,"mi hermano come mucha fruta","My brother eats a lot of fruit.",[],"Mucha agrees with fruta: feminine singular."],
+[1,3,"por favor quiero una mesa para dos","Please, I want a table for two.",["quiero una mesa para dos por favor","quiero por favor una mesa para dos"],"Por favor can open or close the sentence."],
+[1,3,"qué quieres beber con la comida","What do you want to drink with the meal?",[],"Question word first, then the verb, then the infinitive."],
+// World 2: LA CIUDAD
+[2,1,"el banco está aquí","The bank is here.",["aquí está el banco","está aquí el banco"],"Estar shows location; aquí can move to the front."],
+[2,1,"gira a la derecha","Turn right.",[],"Directions use a la derecha and a la izquierda."],
+[2,1,"dónde está el hospital","Where is the hospital?",[],"In questions, estar comes right after the question word."],
+[2,2,"la estación está muy lejos","The station is very far.",[],"Muy goes before the adverb lejos."],
+[2,2,"voy al centro en autobús","I go to the centre by bus.",["en autobús voy al centro","voy en autobús al centro"],"Ir a + el becomes al; transport uses en."],
+[2,3,"mi casa está cerca del parque","My house is near the park.",["cerca del parque está mi casa"],"Cerca de + el becomes cerca del."],
+[2,3,"sigue recto y gira a la izquierda","Go straight and turn left.",[],"Commands for directions: sigue recto, gira a la izquierda."],
+// World 3: LAS VACACIONES
+[3,1,"hoy hace mucho calor","Today it is very hot.",["hace mucho calor hoy"],"Weather uses hacer: hace mucho calor."],
+[3,1,"ya he visitado Madrid","I have already visited Madrid.",["he visitado Madrid ya","he visitado ya Madrid"],"Perfect tense: he + past participle stay together."],
+[3,2,"ayer comimos en un restaurante","Yesterday we ate in a restaurant.",["comimos ayer en un restaurante","comimos en un restaurante ayer"],"Ayer can sit at the start or the end."],
+[3,2,"este verano voy a viajar","This summer I am going to travel.",["voy a viajar este verano"],"Ir a + infinitive talks about plans."],
+[3,2,"el hotel tiene una piscina","The hotel has a swimming pool.",[],"Subject, verb, object: the basic Spanish order."],
+[3,3,"mañana voy a visitar el museo","Tomorrow I am going to visit the museum.",["voy a visitar el museo mañana"],"Time expressions like mañana can go at the start or the end."],
+[3,3,"el año pasado fuimos a Italia","Last year we went to Italy.",["fuimos a Italia el año pasado"],"Past time phrases can open or close the sentence."],
+// World 4: LA ESCUELA
+[4,1,"mi madre es profesora","My mother is a teacher.",[],"Ser with jobs: no article before profesora."],
+[4,1,"tengo clase de inglés","I have an English class.",[],"Use de to say what subject the class is."],
+[4,2,"mi hermano es más alto","My brother is taller.",[],"Más + adjective makes a comparison."],
+[4,2,"me gusta jugar al fútbol","I like playing football.",["jugar al fútbol me gusta"],"Gustar + infinitive; jugar a + el becomes al."],
+[4,2,"estudio mucho para el examen","I study a lot for the exam.",["para el examen estudio mucho"],"Para + noun gives the purpose or goal."],
+[4,3,"este regalo es para mi abuela","This gift is for my grandmother.",[],"Para shows who something is for."],
+[4,3,"Ana es más simpática que Luis","Ana is nicer than Luis.",[],"Comparison pattern: más + adjective + que."],
+// World 5: LA VIDA COTIDIANA
+[5,1,"me lavo las manos","I wash my hands.",[],"Reflexive pronoun me goes before the verb."],
+[5,1,"me duele la cabeza","My head hurts.",["la cabeza me duele"],"Doler works like gustar: me duele + singular noun."],
+[5,2,"me levanto a las siete","I get up at seven.",["a las siete me levanto"],"Reflexive me stays right before levanto."],
+[5,2,"lo compramos en el mercado","We buy it at the market.",["en el mercado lo compramos"],"Object pronoun lo goes before the conjugated verb."],
+[5,3,"de niño me acostaba muy tarde","As a child I went to bed very late.",["me acostaba muy tarde de niño"],"Imperfect describes habits in the past."],
+[5,3,"por la noche nos acostamos temprano","In the evening we go to bed early.",["nos acostamos temprano por la noche"],"Nos is the reflexive pronoun for we."],
+// World 6: EL DESAFIO FINAL
+[6,2,"ayer me levanté muy temprano","Yesterday I got up very early.",["me levanté muy temprano ayer"],"Reflexive pronoun stays before the past tense verb."],
+[6,2,"no lo he visto todavía","I have not seen it yet.",["todavía no lo he visto"],"No and lo come before he visto."],
+[6,3,"cuando era pequeña vivía en Sevilla","When I was little I lived in Seville.",["vivía en Sevilla cuando era pequeña"],"Imperfect describes past situations; cuando clauses can move."],
+[6,3,"mañana vamos a comprar unos zapatos nuevos","Tomorrow we are going to buy some new shoes.",["vamos a comprar unos zapatos nuevos mañana"],"Adjectives like nuevos usually follow the noun."],
+[6,3,"esta mañana he desayunado con mi hermana","This morning I have had breakfast with my sister.",["he desayunado con mi hermana esta mañana","he desayunado esta mañana con mi hermana"],"Esta mañana pairs with the perfect tense."],
+[6,3,"la película es mejor que el libro","The film is better than the book.",[],"Mejor que compares two things."],
+]);
+
+// BOSS CHALLENGE
+QB.add('bos', [
+// World 1: LA COMIDA
+[1,2,"mc","A mis hermanos ___ las patatas fritas.","les gustan",["les gusta","le gustan","nos gustan"],"Gustar agrees with the thing liked (plural: gustan). 'A mis hermanos' needs les."],
+[1,2,"mc","— ¿Quieres el pan? — Sí, ___ quiero con aceite.","lo",["la","le","los"],"Pan is masculine singular, so the direct object pronoun is lo."],
+[1,3,"mc","Al terminar de comer, pedimos ___ al camarero para pagar.","la cuenta",["la carta","la receta","el postre"],"La cuenta is the bill you ask for in order to pay."],
+[1,2,"mc","Para hacer una tortilla de patatas necesitas patatas, huevos y ___.","aceite",["azúcar","chocolate","helado"],"A Spanish omelette is fried in oil; sugar, chocolate and ice cream do not belong in it."],
+[1,3,"mc","En la panadería: — Dos barras de pan, por favor. ¿Cuánto ___?","es",["tiene","hace","hay"],"To ask the total price when paying you say ¿Cuánto es?"],
+[1,3,"mc","Mis padres ___ comer fuera los domingos.","prefieren",["preferen","prefiere","preferimos"],"Preferir is stem-changing (e to ie) and ellos takes -en: prefieren."],
+[1,3,"build","nunca como carne por la noche","I never eat meat at night.",["por la noche nunca como carne"],"Nunca can go before the verb without no."],
+// World 2: LA CIUDAD
+[2,3,"mc","Para ir al museo, ___ la segunda calle a la derecha.","coge",["coger","cogiendo","cogido"],"Giving directions to a friend uses the tú command: coge."],
+[2,2,"mc","¿Dónde ___ la fiesta de Ana? — En su casa, a las nueve.","es",["hay","son","estoy"],"Ser is used for where an event takes place."],
+[2,3,"mc","Mira, Pablo ___ el autobús en la parada.","está esperando",["es esperando","está esperado","esperando"],"Estar + gerund (-ando/-iendo) describes an action in progress."],
+[2,2,"mc","El banco está ___ la farmacia y el cine.","entre",["sobre","hacia","desde"],"Entre means between two places."],
+[2,2,"mc","¿Qué significa «la parada»?","Es el lugar donde para el autobús.",["Es el billete del metro.","Es una calle muy grande.","Es una tienda de ropa."],"La parada is the stop where buses or trams stop."],
+[2,3,"mc","Vivo ___ la plaza Mayor, en un piso muy bonito.","en",["a","de","con"],"Use en to say where you live: vivo en."],
+[2,3,"build","el museo está al lado del parque","The museum is next to the park.",["al lado del parque está el museo","está al lado del parque el museo"],"Al = a + el; estar gives the location of a place."],
+// World 3: LAS VACACIONES
+[3,3,"mc","Todavía no ___ la maleta, ¡qué desastre!","he hecho",["haciendo","hacía","hacer"],"Todavía no points to the present perfect: he hecho."],
+[3,2,"mc","Mañana ___ visitar el castillo; hoy estamos muy cansados.","vamos a",["fuimos a","íbamos a","hemos ido a"],"Mañana + plan = ir a + infinitive: vamos a visitar."],
+[3,3,"mc","Anoche nosotros ___ en un hotel muy céntrico.","dormimos",["dormiendo","duermo","dormir"],"Anoche is a finished time, so the pretérito indefinido is used: dormimos."],
+[3,2,"mc","Hace mucho frío; ponte el ___ y los guantes.","abrigo",["bañador","paraguas","calor"],"El abrigo is the coat you wear when it is cold."],
+[3,2,"mc","— Buenos días, tengo una reserva a nombre de López. — Perfecto, ¿me da ___, por favor?","su pasaporte",["su receta","su paraguas","su menú"],"At hotel check-in you hand over your passport or ID."],
+[3,3,"mc","¿Has estado alguna vez en Granada? — Sí, ___ allí hace dos años.","estuve",["he estado","estaba","estoy"],"Hace dos años is a finished past time: indefinido (estuve)."],
+[3,3,"build","hoy hemos visitado el museo de arte","Today we have visited the art museum.",["hemos visitado el museo de arte hoy"],"Hoy is an unfinished period, so use the perfecto: hemos visitado."],
+[3,3,"build","el año pasado viajamos a Italia","Last year we travelled to Italy.",["viajamos a Italia el año pasado"],"El año pasado is a finished period, so use the indefinido: viajamos."],
+// World 4: LA ESCUELA
+[4,2,"mc","Mi hermana tiene quince años y yo doce. Ella es ___ que yo.","mayor",["más pequeña","menor","mejor"],"Mayor means older; menor means younger."],
+[4,3,"mc","Este examen es ___ difícil que el de ayer.","más",["tan","muy","mejor"],"Comparatives of superiority use más ... que."],
+[4,3,"mc","Este regalo es ___ mi profesora de inglés.","para",["por","sobre","entre"],"Para introduces the recipient: para mi profesora."],
+[4,2,"mc","Gracias ___ ayudarme con los deberes.","por",["para","a","en"],"Dar las gracias por + infinitive thanks someone for something."],
+[4,3,"mc","Ayer mi hermano ___ un gol en el partido de fútbol.","marcó",["marca","marcaba","ha marcado"],"Ayer is a finished time: pretérito indefinido (marcó)."],
+[4,2,"mc","La madre de mi madre es mi ___.","abuela",["tía","prima","suegra"],"The mother of your mother is your grandmother (abuela)."],
+[4,3,"mc","¿Qué significa «los deberes»?","Es el trabajo que los alumnos hacen en casa.",["Es una clase de gimnasia.","Es el recreo entre clases.","Es un libro de cuentos."],"Los deberes is homework."],
+[4,3,"build","mi hermano estudió inglés en Londres","My brother studied English in London.",["en Londres mi hermano estudió inglés"],"Estudió is the indefinido of estudiar for él."],
+// World 5: LA VIDA COTIDIANA
+[5,2,"mc","Mis padres siempre ___ a las seis de la mañana.","se levantan",["me levantan","se levanta","nos levantamos"],"Reflexive pronoun and verb must match the subject: ellos se levantan."],
+[5,3,"mc","Cuando era niña, todos los veranos ___ a casa de mis abuelos.","iba",["yendo","he ido","voy"],"Todos los veranos in the past is a habit: imperfecto (iba)."],
+[5,3,"mc","— ¿Has comprado las medicinas? — Sí, ___ he comprado en la farmacia.","las",["los","les","la"],"Las medicinas is feminine plural, so the direct object pronoun is las."],
+[5,2,"mc","Estoy enfermo. Tengo tos y fiebre. Voy al ___.","médico",["panadero","banco","cine"],"You go to the doctor (médico) when you are ill."],
+[5,2,"mc","En mi piso, la cocina está al lado del salón y para dormir voy al ___.","dormitorio",["balcón","garaje","pasillo"],"El dormitorio is the bedroom."],
+[5,3,"mc","Ayer, mientras yo ___ la cena, sonó el teléfono.","preparaba",["preparé","he preparado","preparo"],"Mientras describes the longer action in progress (imperfecto); sonó is the interrupting event."],
+[5,2,"build","mi madre se despierta muy temprano","My mother wakes up very early.",[],"Reflexive verb: se despierta agrees with mi madre."],
+[5,3,"build","lo compré ayer en el supermercado","I bought it yesterday at the supermarket.",["ayer lo compré en el supermercado","en el supermercado lo compré ayer","lo compré en el supermercado ayer"],"The object pronoun lo goes right before the verb."],
+// World 6: EL DESAFÍO FINAL
+[6,2,"mc","Si quieres, ven ___ al cine.","conmigo",["con yo","con mí","me"],"Con + yo becomes conmigo."],
+[6,3,"mc","Mi tío ___ médico, pero hoy ___ enfermo.","es / está",["está / es","es / es","está / está"],"Ser for profession; estar for a temporary state."],
+[6,3,"mc","¿Cuál es la frase correcta?","Ayer fuimos al cine y vimos una película muy buena.",["Ayer vamos al cine y vimos una película muy buena.","Ayer fuimos al cine y vemos una película muy buena.","Ayer fui al cine y vimos una película muy buena."],"Ayer needs the indefinido throughout and the verb must match the subject: fuimos ... vimos."],
+[6,3,"mc","Siempre que iba a casa de mi abuela, ella ___ pasteles.","hacía",["hizo","ha hecho","hace"],"Siempre que iba describes a repeated past habit: imperfecto (hacía)."],
+[6,2,"mc","A mí ___ encanta bailar, pero a ellos no.","me",["mi","yo","te"],"After A mí the pronoun is me: me encanta."],
+[6,3,"build","mañana vamos a comer con mis abuelos","Tomorrow we are going to eat with my grandparents.",["con mis abuelos vamos a comer mañana","vamos a comer con mis abuelos mañana"],"Ir a + infinitive expresses a plan: vamos a comer."],
+[6,3,"build","esta tarde he estado estudiando en casa","This afternoon I have been studying at home.",["en casa he estado estudiando esta tarde","he estado estudiando en casa esta tarde","he estado estudiando esta tarde en casa"],"Perfecto of estar (he estado) + gerund; esta tarde is an unfinished period."]
+]);
+
+
+/* ============================== CONSTANTS ============================== */
+const COLS = 10, ROWS = 20, CELL = 30;
+const W = COLS * CELL, H = ROWS * CELL;
+const DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+const COLORS = { I:'#00f0ff', O:'#ffe600', T:'#c13dff', S:'#39ff14', Z:'#ff2e63', J:'#3d6bff', L:'#ff9100' };
+let SKIN_STYLE = 'gloss';
+const SHAPES = {
+  I:[[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],
+  O:[[1,1],[1,1]],
+  T:[[0,1,0],[1,1,1],[0,0,0]],
+  S:[[0,1,1],[1,1,0],[0,0,0]],
+  Z:[[1,1,0],[0,1,1],[0,0,0]],
+  J:[[1,0,0],[1,1,1],[0,0,0]],
+  L:[[0,0,1],[1,1,1],[0,0,0]]
+};
+const TYPES = Object.keys(SHAPES);
+
+// SRS wall-kick tables (x, y with y pointing up; converted on use)
+const KICKS_JLSTZ = {
+  '0>1':[[0,0],[-1,0],[-1,1],[0,-2],[-1,-2]], '1>0':[[0,0],[1,0],[1,-1],[0,2],[1,2]],
+  '1>2':[[0,0],[1,0],[1,-1],[0,2],[1,2]],     '2>1':[[0,0],[-1,0],[-1,1],[0,-2],[-1,-2]],
+  '2>3':[[0,0],[1,0],[1,1],[0,-2],[1,-2]],    '3>2':[[0,0],[-1,0],[-1,-1],[0,2],[-1,2]],
+  '3>0':[[0,0],[-1,0],[-1,-1],[0,2],[-1,2]],  '0>3':[[0,0],[1,0],[1,1],[0,-2],[1,-2]]
+};
+const KICKS_I = {
+  '0>1':[[0,0],[-2,0],[1,0],[-2,-1],[1,2]],   '1>0':[[0,0],[2,0],[-1,0],[2,1],[-1,-2]],
+  '1>2':[[0,0],[-1,0],[2,0],[-1,2],[2,-1]],   '2>1':[[0,0],[1,0],[-2,0],[1,-2],[-2,1]],
+  '2>3':[[0,0],[2,0],[-1,0],[2,1],[-1,-2]],   '3>2':[[0,0],[-2,0],[1,0],[-2,-1],[1,2]],
+  '3>0':[[0,0],[1,0],[-2,0],[1,-2],[-2,1]],   '0>3':[[0,0],[-1,0],[2,0],[-1,2],[2,-1]]
+};
+
+const LINE_POINTS = [0, 100, 300, 500, 800];
+const LOCK_DELAY = 500, MAX_LOCK_RESETS = 15, CLEAR_MS = 380;
+const DAS = 150, ARR = 40, SOFT_INTERVAL = 45;
+
+/* ---- learning constants ---- */
+const TIME_MC = 15, TIME_BUILD = 25;      // seconds per question
+const SHORT_EVERY = 3, BOSS_EVERY = 10;   // lines
+const BOSS_NEED = 3, BOSS_MAX = 6;        // consecutive correct needed / max questions per boss
+const WRONG_PENALTY = 50;                 // Tetris points lost on a wrong answer
+const RESUME_GRACE = 600, FEEDBACK_LOCK = 450;   // ms
+
+const CATS = {
+  voc:{ name:'Vocabulario',           emoji:'📚', color:'#00f0ff', how:'Elige la palabra correcta' },
+  gra:{ name:'Gramática',             emoji:'✏️', color:'#c13dff', how:'Completa la frase' },
+  rea:{ name:'Español real',          emoji:'💬', color:'#39ff14', how:'Elige la expresión más natural' },
+  sen:{ name:'Constructor de frases', emoji:'🧩', color:'#ff9100', how:'Ordena las palabras' },
+  bos:{ name:'Jefe final',            emoji:'👹', color:'#ff2e63', how:'Elige la respuesta correcta' }
+};
+const CAT_ORDER = ['voc', 'gra', 'rea', 'sen', 'bos'];
+const SHORT_CATS = ['voc', 'gra', 'rea', 'sen'];
+
+const WORLDS = [null,
+  { id:1, name:'LA COMIDA',          emoji:'🍕', color:'#ff9100', vocab:'comida, bebida y restaurante',        grammar:'presente, gustar, hay / es / está',                 req:{ xp:0,   ok:0 } },
+  { id:2, name:'LA CIUDAD',          emoji:'🏙️', color:'#4d8dff', vocab:'lugares, transporte y direcciones',   grammar:'ser / estar, preposiciones de lugar',               req:{ xp:80,  ok:4 } },
+  { id:3, name:'LAS VACACIONES',     emoji:'🏖️', color:'#00e5b0', vocab:'viajes, tiempo y ropa',               grammar:'pretérito perfecto, ir a + infinitivo, indefinido', req:{ xp:200, ok:10 } },
+  { id:4, name:'LA ESCUELA',        emoji:'🎒', color:'#c13dff', vocab:'escuela, familia y aficiones',        grammar:'comparativos, por / para, indefinido',              req:{ xp:380, ok:18 } },
+  { id:5, name:'LA VIDA COTIDIANA',  emoji:'🏠', color:'#ff2e93', vocab:'casa, salud, compras y rutinas',      grammar:'reflexivos, imperfecto, pronombres lo / la',        req:{ xp:600, ok:28 } },
+  { id:6, name:'EL DESAFÍO FINAL',   emoji:'🏆', color:'#ffe600', vocab:'repaso de todos los temas',           grammar:'repaso mixto de nivel A2',                          req:{ xp:900, ok:40, boss:1 } }
+];
+const BOSSES = [null,
+  { name:'Don Paella',             emoji:'🥘' },
+  { name:'El Rey del Tráfico',     emoji:'🚦' },
+  { name:'La Reina del Verano',    emoji:'🏖️' },
+  { name:'El Profesor Misterio',   emoji:'🎓' },
+  { name:'Doña Rutina',            emoji:'⏰' },
+  { name:'El Gran Dragón',         emoji:'🐉' }
+];
+const RANKS = [
+  { xp:0,    name:'Principiante', emoji:'🌱' }, { xp:100,  name:'Aprendiz',  emoji:'📘' },
+  { xp:300,  name:'Explorador',   emoji:'🧭' }, { xp:600,  name:'Viajero',   emoji:'✈️' },
+  { xp:1000, name:'Experto',      emoji:'🎓' }, { xp:1600, name:'Maestro',   emoji:'🏆' },
+  { xp:2500, name:'Leyenda',      emoji:'👑' }
+];
+const SKINS = [
+  { id:'neon',   name:'Neón',     cost:0,   style:'gloss', colors:{ I:'#00f0ff', O:'#ffe600', T:'#c13dff', S:'#39ff14', Z:'#ff2e63', J:'#3d6bff', L:'#ff9100' } },
+  { id:'retro',  name:'Retro',    cost:50,  style:'flat',  colors:{ I:'#00bcd4', O:'#ffd400', T:'#9c27b0', S:'#4caf50', Z:'#f44336', J:'#2196f3', L:'#ff9800' } },
+  { id:'candy',  name:'Caramelo', cost:90,  style:'gloss', colors:{ I:'#7de3ff', O:'#ffe58a', T:'#d9a3ff', S:'#9cf0b4', Z:'#ff9eb8', J:'#9fb4ff', L:'#ffbf8a' } },
+  { id:'ice',    name:'Hielo',    cost:140, style:'gloss', colors:{ I:'#b7f3ff', O:'#e6fbff', T:'#7aa8ff', S:'#5fe0d0', Z:'#9bb8ff', J:'#4a78ff', L:'#8fd3ff' } },
+  { id:'fire',   name:'Fuego',    cost:200, style:'gloss', colors:{ I:'#ffd34d', O:'#ffb300', T:'#ff6d00', S:'#ff9e40', Z:'#ff1744', J:'#d50000', L:'#ff7043' } },
+  { id:'gold',   name:'Oro',      cost:300, style:'gloss', colors:{ I:'#fff3a0', O:'#ffd700', T:'#e6b422', S:'#f0c040', Z:'#d4a017', J:'#c9a227', L:'#ffcf40' } },
+  { id:'galaxy', name:'Galaxia',  cost:0,   ach:'boss5', style:'gloss', colors:{ I:'#6ef3ff', O:'#ffd6fa', T:'#b36bff', S:'#47ffd0', Z:'#ff5cc8', J:'#6b7bff', L:'#ff9be5' } }
+];
+const ACH = [
+  { id:'first',   emoji:'⭐', name:'Primer acierto',     desc:'Responde bien tu primer reto.',          test:(p,g) => p.correct >= 1 },
+  { id:'streak5', emoji:'🔥', name:'Racha de 5',          desc:'5 aciertos seguidos.',                   test:(p,g) => p.streakBest >= 5 },
+  { id:'streak10',emoji:'🌋', name:'Racha de 10',         desc:'10 aciertos seguidos.',                  test:(p,g) => p.streakBest >= 10 },
+  { id:'c25',     emoji:'📗', name:'25 aciertos',         desc:'25 respuestas correctas en total.',      test:(p,g) => p.correct >= 25 },
+  { id:'c100',    emoji:'📚', name:'100 aciertos',        desc:'100 respuestas correctas en total.',     test:(p,g) => p.correct >= 100 },
+  { id:'boss1',   emoji:'⚔️', name:'Cazajefes',           desc:'Derrota a un jefe.',                     test:(p,g) => p.bosses >= 1 },
+  { id:'boss5',   emoji:'🐲', name:'Matadragones',        desc:'Derrota a 5 jefes. ¡Desbloquea Galaxia!',test:(p,g) => p.bosses >= 5 },
+  { id:'tetris',  emoji:'💥', name:'¡Tetris!',            desc:'Limpia 4 líneas a la vez.',              test:(p,g) => p.tetrises >= 1 },
+  { id:'pts2k',   emoji:'🎯', name:'2.000 puntos',        desc:'2.000 puntos en una partida.',           test:(p,g) => !!g && g.maxScore >= 2000 },
+  { id:'pts10k',  emoji:'🚀', name:'10.000 puntos',       desc:'10.000 puntos en una partida.',          test:(p,g) => !!g && g.maxScore >= 10000 },
+  { id:'poly',    emoji:'🌍', name:'Políglota',           desc:'3 aciertos en cada categoría.',          test:(p,g) => CAT_ORDER.every(c => p.cat[c].c >= 3) },
+  { id:'fast',    emoji:'⚡', name:'Rayo',                desc:'5 respuestas rápidas en una partida.',   test:(p,g) => !!g && g.fast >= 5 },
+  { id:'perfect', emoji:'💎', name:'Partida perfecta',    desc:'6+ retos sin ningún fallo.',             test:(p,g) => !!g && g.final && g.answered >= 6 && g.wrong === 0 },
+  { id:'rich',    emoji:'💰', name:'Ahorrador',           desc:'Consigue 200 monedas en total.',         test:(p,g) => p.coinsTotal >= 200 },
+  { id:'trot',    emoji:'🧳', name:'Trotamundos',         desc:'Desbloquea 4 mundos.',                   test:(p,g) => unlockedCount(p) >= 4 },
+  { id:'master',  emoji:'👑', name:'Gran maestro',        desc:'Desbloquea los 6 mundos.',               test:(p,g) => unlockedCount(p) >= 6 }
+];
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+function shuffle(a){ for(let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+
+/* ================================ DOM ================================== */
+const boardCanvas = $('board'), nextCanvas = $('nextC'), holdCanvas = $('holdC');
+function setupCanvas(c, w, h){
+  c.width = Math.round(w * DPR); c.height = Math.round(h * DPR);
+  const g = c.getContext('2d'); g.setTransform(DPR, 0, 0, DPR, 0, 0); return g;
+}
+const g = setupCanvas(boardCanvas, W, H);
+const gNext = setupCanvas(nextCanvas, 100, 216);
+const gHold = setupCanvas(holdCanvas, 100, 72);
+
+const el = {
+  score:$('score'), level:$('level'), lines:$('lines'), hi:$('hiscore'),
+  wrap:$('boardWrap'), toast:$('toast'), ovPause:$('ovPause'),
+  start:$('startBtn'), pause:$('pauseBtn'), restart:$('restartBtn'), menu:$('menuBtn'), sound:$('soundBtn')
+};
+
+/* ================================ AUDIO ================================ */
+let audioCtx = null, soundOn = true;
+function ac(){
+  if(!audioCtx){
+    try{ audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){ audioCtx = null; }
+  }
+  if(audioCtx && audioCtx.state === 'suspended'){ try{ audioCtx.resume(); }catch(e){} }
+  return audioCtx;
+}
+function tone(freq, dur, type, vol, delay, slide){
+  if(!soundOn) return;
+  const a = ac(); if(!a) return;
+  try{
+    const t = a.currentTime + (delay || 0);
+    const o = a.createOscillator(), gn = a.createGain();
+    o.type = type || 'square';
+    o.frequency.setValueAtTime(freq, t);
+    if(slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, freq + slide), t + dur);
+    gn.gain.setValueAtTime(vol || 0.05, t);
+    gn.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(gn); gn.connect(a.destination);
+    o.start(t); o.stop(t + dur + 0.03);
+  }catch(e){}
+}
+const sfx = {
+  move(){ tone(190, .035, 'square', .025); },
+  rotate(){ tone(320, .06, 'triangle', .06, 0, 160); },
+  land(){ tone(110, .1, 'sine', .14, 0, -50); },
+  hard(){ tone(160, .14, 'sawtooth', .07, 0, -110); },
+  hold(){ tone(260, .08, 'triangle', .06, 0, -80); },
+  clear(n){ for(let i = 0; i < n + 2; i++) tone(392 * Math.pow(1.2599, i), .12, 'square', .05, i * .06); },
+  level(){ [523, 659, 784, 1047].forEach((f, i) => tone(f, .16, 'triangle', .08, i * .09)); },
+  over(){ [440, 370, 311, 233].forEach((f, i) => tone(f, .28, 'sawtooth', .06, i * .2)); },
+  ask(){ [660, 880].forEach((f, i) => tone(f, .1, 'triangle', .07, i * .1)); },
+  correct(){ [523, 659, 784].forEach((f, i) => tone(f, .13, 'triangle', .08, i * .08)); },
+  wrong(){ tone(180, .25, 'sawtooth', .07, 0, -90); },
+  tick(){ tone(900, .04, 'square', .03); },
+  boss(){ [196, 196, 262, 220].forEach((f, i) => tone(f, .2, 'sawtooth', .07, i * .15)); },
+  victory(){ [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, .18, 'triangle', .09, i * .1)); }
+};
+
+/* ============================== PERSISTENCE ============================ */
+const STORE_KEY = 'sptc_v1';
+function loadDB(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(raw){
+      const d = JSON.parse(raw);
+      if(d && typeof d === 'object' && d.players){
+        d.settings = Object.assign({ unlockAll:false, world:1 }, d.settings || {});
+        return d;
+      }
+    }
+  }catch(e){}
+  return { v:1, players:{}, last:'', settings:{ unlockAll:false, world:1 } };
+}
+let DB = loadDB();
+let saveTimer = 0;
+function saveDB(){ clearTimeout(saveTimer); try{ localStorage.setItem(STORE_KEY, JSON.stringify(DB)); }catch(e){} }
+function saveSoon(){ clearTimeout(saveTimer); saveTimer = setTimeout(saveDB, 300); }
+
+const catStats = () => ({ voc:{c:0,t:0}, gra:{c:0,t:0}, rea:{c:0,t:0}, sen:{c:0,t:0}, bos:{c:0,t:0} });
+function cleanName(s){ return String(s || '').replace(/\s+/g, ' ').trim().slice(0, 24); }
+function pkey(n){ return cleanName(n).toLowerCase(); }
+function newProfile(name){
+  return { name, created:Date.now(), xp:0, coins:0, coinsTotal:0, correct:0, wrong:0, bosses:0, tetrises:0, streakBest:0,
+           ach:{}, skins:['neon'], skin:'neon', cat:catStats(), best:{ score:0, acc:0, xp:0, streak:0 }, recent:[], games:[] };
+}
+function getProfile(name, create){
+  const k = pkey(name); if(!k) return null;
+  let p = DB.players[k];
+  if(!p && create) p = DB.players[k] = newProfile(cleanName(name));
+  if(p){   // forward-compatible defaults
+    const d = newProfile(p.name);
+    for(const f in d) if(p[f] === undefined) p[f] = d[f];
+    CAT_ORDER.forEach(c => { if(!p.cat[c]) p.cat[c] = { c:0, t:0 }; });
+  }
+  return p || null;
+}
+const rankOf = xp => { let i = 0; RANKS.forEach((r, j) => { if(xp >= r.xp) i = j; }); return i; };
+
+function worldUnlocked(p, w){
+  if(w <= 1 || DB.settings.unlockAll) return true;
+  const r = WORLDS[w].req;
+  return !!p && p.xp >= r.xp && p.correct >= r.ok && p.bosses >= (r.boss || 0);
+}
+function unlockedCount(p){ let n = 0; for(let w = 1; w <= 6; w++) if(worldUnlocked(p, w)) n++; return n; }
+
+/* ============================== GAME STATE ============================= */
+let state = 'welcome';           // welcome | playing | paused | challenge | over
+let board, cur, nextQ, holdType, canHold;
+let score, level, lines, combo, hiScore, newBest;
+let dropTimer, lockTimer, lockResets, lowestY;
+let clearing = null;              // {rows:[], t:0}
+let particles = [];
+let lastTime = 0;
+let P = null;                     // current player profile
+let G = null;                     // current game (learning) stats
+let CH = null;                    // active challenge
+hiScore = 0;
+
+const input = { left:false, right:false, down:false, lastDir:0, curDir:0, das:0, arr:0 };
+
+function newBoard(){ return Array.from({length:ROWS}, () => Array(COLS).fill(null)); }
+
+/* --- piece helpers --- */
+function rotCW(m){ const n = m.length; return m.map((_, r) => m[r].map((_, c) => m[n - 1 - c][r])); }
+function rotCCW(m){ const n = m.length; return m.map((_, r) => m[r].map((_, c) => m[c][n - 1 - r])); }
+
+function collides(m, x, y){
+  for(let r = 0; r < m.length; r++){
+    for(let c = 0; c < m[r].length; c++){
+      if(!m[r][c]) continue;
+      const nx = x + c, ny = y + r;
+      if(nx < 0 || nx >= COLS || ny >= ROWS) return true;
+      if(ny >= 0 && board[ny][nx]) return true;
+    }
+  }
+  return false;
+}
+
+function refillQueue(){
+  while(nextQ.length < 7){
+    const bag = TYPES.slice();
+    for(let i = bag.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [bag[i], bag[j]] = [bag[j], bag[i]];
+    }
+    nextQ.push(...bag);
+  }
+}
+
+function spawn(type){
+  refillQueue();
+  const t = type || nextQ.shift();
+  refillQueue();
+  const m = SHAPES[t].map(r => r.slice());
+  cur = { type:t, m, rot:0, x:Math.floor((COLS - m.length) / 2), y:(t === 'I' ? -1 : 0) };
+  dropTimer = 0; lockTimer = 0; lockResets = 0; lowestY = cur.y;
+  if(collides(cur.m, cur.x, cur.y)){
+    gameOver();
+    return false;
+  }
+  return true;
+}
+
+function speedMs(){ return Math.max(50, 800 * Math.pow(0.8, level - 1)); }
+function grounded(){ return collides(cur.m, cur.x, cur.y + 1); }
+
+function touchedGround(){
+  if(grounded()){
+    if(lockResets < MAX_LOCK_RESETS){ lockTimer = 0; lockResets++; }
+  } else {
+    lockTimer = 0;
+  }
+}
+
+function move(dx){
+  if(!cur || state !== 'playing' || clearing) return false;
+  if(!collides(cur.m, cur.x + dx, cur.y)){
+    cur.x += dx; touchedGround(); sfx.move(); return true;
+  }
+  return false;
+}
+
+function rotate(dir){
+  if(!cur || state !== 'playing' || clearing) return false;
+  const from = cur.rot, to = (from + dir + 4) % 4;
+  const m = dir > 0 ? rotCW(cur.m) : rotCCW(cur.m);
+  let kicks = [[0,0]];
+  if(cur.type === 'I') kicks = KICKS_I[from + '>' + to];
+  else if(cur.type !== 'O') kicks = KICKS_JLSTZ[from + '>' + to];
+  for(const [kx, ky] of kicks){
+    const nx = cur.x + kx, ny = cur.y - ky;
+    if(!collides(m, nx, ny)){
+      cur.m = m; cur.rot = to; cur.x = nx; cur.y = ny;
+      if(cur.y > lowestY){ lowestY = cur.y; lockResets = 0; }
+      touchedGround(); sfx.rotate(); return true;
+    }
+  }
+  return false;
+}
+
+function ghostY(){
+  let y = cur.y;
+  while(!collides(cur.m, cur.x, y + 1)) y++;
+  return y;
+}
+
+function hardDrop(){
+  if(!cur || state !== 'playing' || clearing) return;
+  const gy = ghostY(), dist = gy - cur.y;
+  cur.m.forEach((row, r) => row.forEach((v, c) => {
+    if(v && Math.random() < .6) addParticles((cur.x + c + .5) * CELL, (cur.y + r + .5) * CELL, COLORS[cur.type], 2, 90, 0.35);
+  }));
+  cur.y = gy;
+  addScore(dist * 2);
+  shake(); sfx.hard();
+  lockPiece();
+}
+
+function doHold(){
+  if(!cur || state !== 'playing' || clearing || !canHold) return;
+  const t = cur.type;
+  canHold = false;
+  if(holdType){ const h = holdType; holdType = t; spawn(h); }
+  else { holdType = t; spawn(); }
+  sfx.hold();
+}
+
+function lockPiece(){
+  let outOfBounds = false;
+  cur.m.forEach((row, r) => row.forEach((v, c) => {
+    if(!v) return;
+    const x = cur.x + c, y = cur.y + r;
+    if(y < 0) outOfBounds = true; else board[y][x] = cur.type;
+  }));
+  cur = null;
+  if(outOfBounds){ gameOver(); return; }
+  sfx.land();
+
+  const full = [];
+  for(let r = 0; r < ROWS; r++) if(board[r].every(Boolean)) full.push(r);
+
+  if(full.length){
+    combo++;
+    const n = full.length, prevLines = lines;
+    let pts = LINE_POINTS[n];
+    if(combo > 0) pts += 50 * combo * level;
+    addScore(pts);
+    lines += n;
+    sfx.clear(n);
+    clearing = { rows:full, t:0 };
+    full.forEach(r => { for(let c = 0; c < COLS; c++) addParticles((c + .5) * CELL, (r + .5) * CELL, COLORS[board[r][c]] || '#fff', 3, 220, 0.8); });
+
+    if(n === 4 && P){ P.tetrises++; }
+
+    // --- educational triggers: boss every 10 lines, short challenge every 3 ---
+    const bossHit  = Math.floor(lines / BOSS_EVERY)  > Math.floor(prevLines / BOSS_EVERY);
+    const shortHit = Math.floor(lines / SHORT_EVERY) > Math.floor(prevLines / SHORT_EVERY);
+    if(G){
+      if(bossHit) G.pending.push({ kind:'boss' });
+      else if(shortHit) G.pending.push({ kind:'short' });
+    }
+
+    const newLevel = Math.floor(lines / 10) + 1;
+    if(newLevel > level){
+      level = newLevel;
+      sfx.level();
+      showToast('NIVEL ' + level + '<br><span style="font-size:.5em;letter-spacing:.1em">¡Preguntas más difíciles!</span>', false);
+    } else if(n === 4){
+      showToast('¡TETRIS!', false);
+    } else if(combo > 0){
+      showToast('COMBO x' + (combo + 1), true);
+    }
+    updateHud();
+    checkAch();
+  } else {
+    combo = -1;
+    afterLock();
+  }
+}
+
+function afterLock(){
+  canHold = true;
+  if(G && G.pending.length){ startChallenge(G.pending.shift()); }
+  else spawn();
+}
+
+function finishClear(){
+  const rows = clearing.rows.slice().sort((a, b) => a - b);
+  rows.forEach(r => { board.splice(r, 1); board.unshift(Array(COLS).fill(null)); });
+  clearing = null;
+  afterLock();
+}
+
+/* ------------------------------ scoring/HUD ----------------------------- */
+function addScore(n){
+  if(!n) return;
+  score += n;
+  if(G && score > G.maxScore) G.maxScore = score;
+  if(score > hiScore){
+    hiScore = score; newBest = true;
+    if(P){ P.best.score = hiScore; saveSoon(); }
+  }
+  updateHud();
+}
+function bump(node){ node.classList.remove('pop'); void node.offsetWidth; node.classList.add('pop'); }
+let lastLevelShown = 1;
+function updateHud(){
+  el.score.textContent = score;
+  el.level.textContent = level;
+  el.lines.textContent = lines;
+  el.hi.textContent = hiScore;
+  if(level !== lastLevelShown){ bump(el.level); lastLevelShown = level; }
+  updateEdu();
+}
+function updateEdu(){
+  const wid = G ? G.world : (DB.settings.world || 1);
+  const w = WORLDS[wid];
+  $('eduWorld').innerHTML = '<span class="we">' + w.emoji + '</span><span>' + esc(w.name) + '</span>';
+  document.documentElement.style.setProperty('--accent', w.color);
+  $('eduOk').textContent = G ? G.correct : 0;
+  $('eduBad').textContent = G ? G.wrong : 0;
+  const st = G ? G.streak : 0;
+  $('eduStreak').textContent = st;
+  $('eduStreakBox').classList.toggle('hot', st >= 3);
+  $('eduXp').textContent = G ? G.xp : 0;
+  $('eduCoins').textContent = G ? G.coins : 0;
+  const xp = P ? P.xp : 0, ri = rankOf(xp), r = RANKS[ri], nx = RANKS[ri + 1];
+  $('eduRank').textContent = r.emoji + ' ' + r.name;
+  $('eduXpTo').textContent = nx ? xp + '/' + nx.xp + ' XP' : xp + ' XP';
+  $('eduBar').style.width = (nx ? clamp((xp - r.xp) / (nx.xp - r.xp), 0, 1) * 100 : 100) + '%';
+  $('eduNext').innerHTML = (state === 'welcome' || !G) ? 'Reto cada 3 líneas · Jefe cada 10.' :
+    '📝 Próximo reto en <b>' + (SHORT_EVERY - lines % SHORT_EVERY) + '</b> líneas<br>👹 Jefe en <b>' + (BOSS_EVERY - lines % BOSS_EVERY) + '</b> líneas';
+}
+function showToast(html, small){
+  el.toast.innerHTML = html;
+  el.toast.classList.toggle('small', !!small);
+  el.toast.classList.remove('show'); void el.toast.offsetWidth; el.toast.classList.add('show');
+}
+function shake(){
+  el.wrap.classList.remove('shake'); void el.wrap.offsetWidth; el.wrap.classList.add('shake');
+}
+
+function addParticles(x, y, color, n, speed, life){
+  for(let i = 0; i < n; i++){
+    const a = Math.random() * Math.PI * 2, s = speed * (.3 + Math.random() * .7);
+    particles.push({ x, y, vx:Math.cos(a) * s, vy:Math.sin(a) * s - 30, life:life, max:life, color, size:2 + Math.random() * 3 });
+  }
+  if(particles.length > 400) particles.splice(0, particles.length - 400);
+}
+
+/* ===================================================================
+   LEARNING ENGINE
+   =================================================================== */
+function newG(world){
+  return { world, correct:0, wrong:0, xp:0, coins:0, streak:0, bestStreak:0, bosses:0, fast:0, answered:0,
+           cat:catStats(), catCount:{ voc:0, gra:0, rea:0, sen:0 }, lastCat:'', seen:new Set(), pending:[], missed:[],
+           rec:null, start:Date.now(), maxScore:0, final:false, newAch:[], rankUp:null,
+           prevBest:Object.assign({}, P.best), result:null };
+}
+
+function targetDiff(boss){
+  let t = level <= 1 ? 1 : (level <= 3 ? 2 : 3);
+  if(boss) t = Math.max(2, t);
+  const r = Math.random();
+  if(r < .2) t--; else if(r > .8) t++;
+  return clamp(t, boss ? 2 : 1, 3);
+}
+
+function pickQuestion(cats, boss){
+  const world = G.world, td = targetDiff(boss);
+  const all = cats.reduce((a, c) => a.concat(QB.bank[c]), []);
+  const recent = new Set(P.recent || []);
+  const tiers = world === 6 ? [
+    q => q.world === 6 && q.d === td, q => q.world === 6 && Math.abs(q.d - td) <= 1,
+    q => Math.abs(q.d - td) <= 1, q => true
+  ] : [
+    q => q.world === world && q.d === td, q => q.world === world && Math.abs(q.d - td) <= 1,
+    q => q.world === world, q => Math.abs(q.d - td) <= 1, q => true
+  ];
+  for(const useRecent of [false, true]){          // first avoid questions seen in earlier games
+    const base = all.filter(q => !G.seen.has(q.id) && (useRecent || !recent.has(q.id)));
+    for(const t of tiers){
+      const c = base.filter(t);
+      if(c.length) return c[Math.floor(Math.random() * c.length)];
+    }
+  }
+  return null;
+}
+
+function chooseCat(){
+  const min = Math.min.apply(null, SHORT_CATS.map(c => G.catCount[c]));
+  let opts = SHORT_CATS.filter(c => G.catCount[c] === min);
+  if(opts.length > 1) opts = opts.filter(c => c !== G.lastCat);
+  return opts[Math.floor(Math.random() * opts.length)];
+}
+
+function getQuestion(kind){
+  let q;
+  if(kind === 'boss') q = pickQuestion(['bos'], true) || pickQuestion(['bos', 'gra', 'rea', 'sen'], true);
+  else { const c = chooseCat(); q = pickQuestion([c], false) || pickQuestion(SHORT_CATS, false); }
+  if(!q){ G.seen.clear(); q = pickQuestion(kind === 'boss' ? ['bos'] : SHORT_CATS, kind === 'boss'); }
+  G.seen.add(q.id);
+  P.recent.push(q.id); if(P.recent.length > 150) P.recent.shift();
+  if(SHORT_CATS.indexOf(q.cat) >= 0){ G.catCount[q.cat]++; G.lastCat = q.cat; }
+  return q;
+}
+
+function prepare(q){
+  const inst = { q };
+  if(q.type === 'build'){
+    const words = q.answer.split(' ');
+    const ok = new Set([q.answer].concat(q.alts || []).map(s => s.toLowerCase()));
+    let order, tries = 0;
+    do { order = shuffle(words.map((w, i) => i)); tries++; }
+    while(tries < 20 && ok.has(order.map(i => words[i]).join(' ').toLowerCase()));
+    inst.tokens = order.map((wi, slot) => ({ id:slot, w:words[wi] }));
+    inst.ok = ok;
+  } else {
+    inst.opts = shuffle([{ t:q.answer, ok:true }].concat(q.wrongs.map(t => ({ t, ok:false }))));
+  }
+  return inst;
+}
+
+function calcReward(q, timeLeft, streakAfter, boss){
+  let xp = 10 + 5 * q.d;
+  if(timeLeft >= 10) xp += 5;
+  if(streakAfter >= 3) xp += Math.min(streakAfter - 2, 5) * 2;
+  if(boss) xp = Math.round(xp * 1.5);
+  const coins = 1 + q.d + (boss ? 2 : 0);
+  const pts = 100 + 50 * q.d + Math.min(streakAfter - 1, 5) * 25 + (boss ? 100 : 0);
+  return { xp, coins, pts };
+}
+
+/* ------------------------------ challenge UI ---------------------------- */
+function modalOpen(){ return !!document.querySelector('.modal:not([hidden])'); }
+function isOpen(id){ return !$(id).hidden; }
+
+function startChallenge(spec){
+  state = 'challenge';
+  input.left = input.right = input.down = false;
+  CH = { kind:spec.kind, boss:spec.kind === 'boss', run:0, asked:0, done:false, victory:false, inst:null,
+         t:0, total:0, waiting:false, lock:0, placed:[], fb:null };
+  syncButtons(); updateEdu();
+  $('mChallenge').hidden = false;
+  if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  if(CH.boss) sfx.boss(); else sfx.ask();
+  nextChallengeQuestion();
+}
+
+function nextChallengeQuestion(){
+  CH.inst = prepare(getQuestion(CH.kind));
+  CH.asked++; CH.waiting = false; CH.placed = []; CH.fb = null; CH.lock = 0;
+  CH.t = CH.total = CH.inst.q.type === 'build' ? TIME_BUILD : TIME_MC;
+  renderChallenge();
+}
+
+function blankHtml(q, filled){
+  const p = esc(q.prompt);
+  if(p.indexOf('___') < 0) return p;
+  return p.replace('___', filled ? '<span class="blank filled">' + esc(q.answer) + '</span>' : '<span class="blank">&nbsp;&nbsp;&nbsp;&nbsp;</span>');
+}
+
+function renderChallenge(){
+  const I = CH.inst, q = I.q, cat = CATS[q.cat], card = $('chCard'), w = WORLDS[G.world];
+  card.style.setProperty('--cc', cat.color);
+  let h = '<div class="ch-top"><span class="chip cat">' + cat.emoji + ' ' + esc(cat.name) + '</span>' +
+          '<span class="chip">' + w.emoji + ' ' + esc(w.name) + '</span><span class="spacer"></span>' +
+          (G.streak >= 2 ? '<span class="chip streak">🔥 ' + G.streak + '</span>' : '') +
+          '<span class="chip">Nivel ' + level + '</span></div>';
+  if(CH.boss){
+    const b = BOSSES[G.world], hp = BOSS_NEED - Math.min(CH.run, BOSS_NEED);
+    let bars = ''; for(let i = 0; i < BOSS_NEED; i++) bars += '<i class="' + (i < hp ? '' : 'off') + '"></i>';
+    h += '<div class="bossbar"><span class="be">' + b.emoji + '</span><div><div class="bn">' + esc(b.name.toUpperCase()) + '</div>' +
+         '<div class="bi">Necesitas ' + BOSS_NEED + ' respuestas correctas seguidas · pregunta ' + CH.asked + '/' + BOSS_MAX + '</div></div>' +
+         '<div class="hp" id="chHp">' + bars + '</div></div>';
+  }
+  h += '<div class="timer' + (CH.t <= 5 ? ' urgent' : '') + '" id="chTimer"' + (CH.waiting ? ' hidden' : '') + '><i id="chTimerBar" style="width:' + (CH.t / CH.total * 100) + '%"></i><span id="chTimerTxt">' + Math.ceil(CH.t) + 's</span></div>';
+  if(q.emoji) h += '<div class="ch-emoji">' + q.emoji + '</div>';
+  h += '<div class="ch-instr">' + (q.type === 'build' ? 'Ordena las palabras' : esc(cat.how)) + '</div>';
+
+  if(q.type === 'build'){
+    h += '<div class="ch-prompt">' + esc(q.en) + '</div>';
+    const fb = CH.fb;
+    h += '<div class="tray' + (fb ? (fb.ok ? ' right' : ' wrong') : '') + '" id="chTray">';
+    if(!CH.placed.length) h += '<span class="ph">Toca las palabras en orden…</span>';
+    CH.placed.forEach(id => { h += '<button class="tok in" data-rm="' + id + '"' + (CH.waiting ? ' disabled' : '') + '>' + esc(I.tokens[id].w) + '</button>'; });
+    h += '</div><div class="bank">';
+    I.tokens.forEach(t => {
+      if(CH.placed.indexOf(t.id) >= 0) return;
+      h += '<button class="tok" data-add="' + t.id + '"' + (CH.waiting ? ' disabled' : '') + '>' + (t.id < 9 ? '<kbd>' + (t.id + 1) + '</kbd>' : '') + esc(t.w) + '</button>';
+    });
+    h += '</div>';
+    if(!CH.waiting){
+      h += '<div class="row center"><button class="btn small" id="chClear"' + (CH.placed.length ? '' : ' disabled') + '>Borrar</button>' +
+           '<button class="btn primary" id="chCheck"' + (CH.placed.length === I.tokens.length ? '' : ' disabled') + '>Comprobar ✓</button></div>';
+    }
+  } else {
+    h += '<div class="ch-prompt">' + blankHtml(q, CH.waiting) + '</div><div class="opts">';
+    I.opts.forEach((o, i) => {
+      let cls = '';
+      if(CH.waiting) cls = o.ok ? ' right' : (CH.fb && CH.fb.picked === i ? ' wrong' : ' dim');
+      h += '<button class="opt' + cls + '" data-i="' + i + '"' + (CH.waiting ? ' disabled' : '') + '><kbd>' + (i + 1) + '</kbd><span>' + esc(o.t) + '</span></button>';
+    });
+    h += '</div>';
+  }
+
+  if(CH.fb){
+    const fb = CH.fb;
+    h += '<div class="feedback ' + (fb.ok ? 'good' : 'bad') + '"><div class="fb-title">' +
+         (fb.ok ? '¡Correcto! 🎉' : (fb.timeout ? '⏰ ¡Se acabó el tiempo!' : 'Casi… 🤔 No es correcto')) + '</div>';
+    if(!fb.ok && fb.picked !== null && fb.pickedText) h += '<div class="fb-answer">Tu respuesta: <s>' + esc(fb.pickedText) + '</s></div>';
+    h += '<div class="fb-answer">Respuesta correcta: <b>' + esc(q.type === 'build' ? cap(q.answer) : q.answer) + '</b></div>';
+    if(q.type === 'build' && q.alts && q.alts.length) h += '<div class="fb-why">También correcto: ' + q.alts.map(a => esc(cap(a))).join(' · ') + '</div>';
+    if(q.why) h += '<div class="fb-why">' + esc(q.why) + '</div>';
+    h += '<div>';
+    const r = fb.rw;
+    if(r.pts) h += '<span class="rw pts">+' + r.pts + ' pts</span>';
+    if(r.xp) h += '<span class="rw xp">+' + r.xp + ' XP</span>';
+    if(r.coins) h += '<span class="rw coin">+' + r.coins + ' 🪙</span>';
+    if(r.pen) h += '<span class="rw neg">−' + r.pen + ' pts</span>';
+    if(fb.ok && G.streak >= 3) h += '<span class="rw pts">🔥 Racha ' + G.streak + '</span>';
+    if(fb.rankUp) h += '<span class="rw xp">⬆ Rango: ' + esc(fb.rankUp) + '</span>';
+    h += '</div>';
+    if(CH.boss){
+      if(CH.done && CH.victory) h += '<div class="fb-title" style="color:#ffe600;margin-top:6px">🏆 ¡JEFE DERROTADO! <span class="rw xp">+50 XP</span><span class="rw coin">+25 🪙</span><span class="rw pts">+500 pts</span></div>';
+      else if(CH.done) h += '<div class="fb-why" style="margin-top:6px">El jefe se escapa… ¡Inténtalo en el próximo!</div>';
+      else if(!fb.ok) h += '<div class="fb-why" style="margin-top:6px">¡El jefe recupera toda su energía! Hay que acertar ' + BOSS_NEED + ' seguidas.</div>';
+      else h += '<div class="fb-why" style="margin-top:6px">¡Buen golpe! Faltan ' + (BOSS_NEED - CH.run) + '.</div>';
+    }
+    h += '<div class="row center" style="margin-top:10px"><button class="btn primary big" id="chNext">' + (CH.boss && !CH.done ? 'Siguiente pregunta ▶' : 'Continuar ▶') + '</button></div></div>';
+  }
+  card.innerHTML = h;
+}
+
+function confetti(){
+  const card = $('chCard'), box = document.createElement('div');
+  box.className = 'confetti';
+  const cols = ['#00f0ff', '#ffe600', '#c13dff', '#39ff14', '#ff2e63', '#ff9100'];
+  for(let i = 0; i < 28; i++){
+    const p = document.createElement('i');
+    p.style.left = (20 + Math.random() * 60) + '%';
+    p.style.background = cols[i % cols.length];
+    p.style.setProperty('--dx', (Math.random() * 360 - 180) + 'px');
+    p.style.setProperty('--dy', (Math.random() * 300 - 120) + 'px');
+    p.style.setProperty('--rot', (Math.random() * 720 - 360) + 'deg');
+    box.appendChild(p);
+  }
+  card.appendChild(box);
+  setTimeout(() => { if(box.parentNode) box.parentNode.removeChild(box); }, 1300);
+}
+
+function answerChallenge(ok, picked, timeout){
+  if(!CH || CH.waiting) return;
+  CH.waiting = true; CH.lock = FEEDBACK_LOCK;
+  const I = CH.inst, q = I.q, timeLeft = Math.max(0, CH.t);
+  const rw = { xp:0, coins:0, pts:0, pen:0 };
+  const rankBefore = rankOf(P.xp);
+  G.answered++; G.cat[q.cat].t++; P.cat[q.cat].t++;
+  let pickedText = '';
+  if(q.type === 'build') pickedText = CH.placed.map(id => I.tokens[id].w).join(' ');
+  else if(picked !== null && picked !== undefined) pickedText = I.opts[picked].t;
+
+  if(ok){
+    G.correct++; P.correct++; G.cat[q.cat].c++; P.cat[q.cat].c++;
+    G.streak++; G.bestStreak = Math.max(G.bestStreak, G.streak); P.streakBest = Math.max(P.streakBest, G.streak);
+    if(timeLeft >= 12) G.fast++;
+    Object.assign(rw, calcReward(q, timeLeft, G.streak, CH.boss));
+    G.xp += rw.xp; G.coins += rw.coins; P.xp += rw.xp; P.coins += rw.coins; P.coinsTotal += rw.coins;
+    addScore(rw.pts);
+    sfx.correct();
+  } else {
+    G.wrong++; P.wrong++; G.streak = 0;
+    rw.pen = Math.min(WRONG_PENALTY, score);
+    score -= rw.pen;
+    G.missed.push({ cat:q.cat, prompt:q.type === 'build' ? q.en : q.prompt.replace('___', '___'), answer:q.type === 'build' ? cap(q.answer) : q.answer });
+    sfx.wrong();
+  }
+
+  if(CH.boss){
+    CH.run = ok ? CH.run + 1 : 0;
+    if(CH.run >= BOSS_NEED){
+      CH.done = true; CH.victory = true; G.bosses++; P.bosses++;
+      G.xp += 50; G.coins += 25; P.xp += 50; P.coins += 25; P.coinsTotal += 25; addScore(500);
+      sfx.victory();
+    } else if(CH.asked >= BOSS_MAX){ CH.done = true; }
+  } else CH.done = true;
+
+  const rankAfter = rankOf(P.xp);
+  CH.fb = { ok, timeout:!!timeout, picked:(picked === undefined ? null : picked), pickedText, rw, rankUp:rankAfter > rankBefore ? RANKS[rankAfter].name : '' };
+  G.xpDirty = true;
+  checkAch();
+  syncRec();
+  saveDB();
+  updateHud();
+  renderChallenge();
+  const card = $('chCard');
+  card.classList.remove('good', 'bad'); void card.offsetWidth; card.classList.add(ok ? 'good' : 'bad');
+  if(ok) confetti();
+}
+
+function pickOption(i){
+  if(!CH || CH.waiting || CH.inst.q.type !== 'mc' || !CH.inst.opts[i]) return;
+  answerChallenge(CH.inst.opts[i].ok, i, false);
+}
+function placeToken(id){
+  if(!CH || CH.waiting || CH.inst.q.type !== 'build') return;
+  if(id < 0 || id >= CH.inst.tokens.length || CH.placed.indexOf(id) >= 0) return;
+  CH.placed.push(id); renderChallenge();
+}
+function removeToken(id){
+  if(!CH || CH.waiting) return;
+  const i = CH.placed.indexOf(id); if(i < 0) return;
+  CH.placed.splice(i, 1); renderChallenge();
+}
+function submitBuild(){
+  if(!CH || CH.waiting || CH.inst.q.type !== 'build') return;
+  if(CH.placed.length !== CH.inst.tokens.length) return;
+  const s = CH.placed.map(id => CH.inst.tokens[id].w).join(' ').toLowerCase();
+  answerChallenge(CH.inst.ok.has(s), null, false);
+}
+
+function challengeContinue(){
+  if(!CH || !CH.waiting) return;
+  if(CH.boss && !CH.done){ nextChallengeQuestion(); return; }
+  endChallenge();
+}
+function endChallenge(){
+  $('mChallenge').hidden = true;
+  CH = null;
+  if(state !== 'challenge') return;
+  if(G.pending.length){ startChallenge(G.pending.shift()); return; }
+  state = 'playing'; syncButtons();
+  if(spawn()) dropTimer = -RESUME_GRACE;
+  lastTime = performance.now();
+  updateEdu();
+}
+
+function tickChallenge(dt){
+  if(!CH) return;
+  if(CH.lock > 0) CH.lock -= dt;
+  if(CH.waiting) return;
+  const prev = Math.ceil(CH.t);
+  CH.t -= dt / 1000;
+  const bar = $('chTimerBar');
+  if(bar){
+    bar.style.width = clamp(CH.t / CH.total, 0, 1) * 100 + '%';
+    $('chTimerTxt').textContent = Math.max(0, Math.ceil(CH.t)) + 's';
+    $('chTimer').classList.toggle('urgent', CH.t <= 5);
+  }
+  if(CH.t <= 5 && Math.ceil(CH.t) !== prev && CH.t > 0) sfx.tick();
+  if(CH.t <= 0){ CH.t = 0; answerChallenge(false, null, true); }
+}
+
+function challengeKey(e){
+  if(!CH) return false;
+  const c = e.code;
+  if(CH.waiting){
+    if(c === 'Enter' || c === 'NumpadEnter' || c === 'Space'){
+      e.preventDefault();
+      if(CH.lock <= 0 && !e.repeat) challengeContinue();
+    }
+    return true;
+  }
+  const q = CH.inst.q;
+  const dm = /^(?:Digit|Numpad)([1-9])$/.exec(c);
+  if(q.type === 'mc'){
+    let idx = -1;
+    if(dm) idx = +dm[1] - 1;
+    else { const lm = /^Key([A-D])$/.exec(c); if(lm) idx = lm[1].charCodeAt(0) - 65; }
+    if(idx >= 0 && idx < CH.inst.opts.length){ e.preventDefault(); pickOption(idx); }
+  } else {
+    if(dm){ e.preventDefault(); placeToken(+dm[1] - 1); }
+    else if(c === 'Backspace'){ e.preventDefault(); if(CH.placed.length) removeToken(CH.placed[CH.placed.length - 1]); }
+    else if(c === 'Enter' || c === 'NumpadEnter'){ e.preventDefault(); submitBuild(); }
+  }
+  return true;
+}
+
+$('chCard').addEventListener('click', e => {
+  const t = e.target.closest('button'); if(!t || !CH) return;
+  if(t.classList.contains('opt')) pickOption(+t.dataset.i);
+  else if(t.dataset.add !== undefined) placeToken(+t.dataset.add);
+  else if(t.dataset.rm !== undefined) removeToken(+t.dataset.rm);
+  else if(t.id === 'chCheck') submitBuild();
+  else if(t.id === 'chClear'){ CH.placed = []; renderChallenge(); }
+  else if(t.id === 'chNext') challengeContinue();
+});
+
+/* ------------------------------ achievements ---------------------------- */
+function checkAch(){
+  if(!P) return;
+  ACH.forEach(a => {
+    if(P.ach[a.id]) return;
+    let ok = false;
+    try{ ok = a.test(P, G); }catch(e){}
+    if(!ok) return;
+    P.ach[a.id] = Date.now();
+    P.coins += 10; P.coinsTotal += 10;
+    if(G){ G.coins += 10; G.newAch.push(a.id); }
+    toastAch(a);
+    saveSoon();
+  });
+}
+function toastAch(a){
+  const box = $('achToast'), d = document.createElement('div');
+  d.className = 'atoast';
+  d.innerHTML = a.emoji + ' Logro: <b>' + esc(a.name) + '</b> <span style="color:var(--dim)">+10 🪙</span>';
+  box.appendChild(d);
+  setTimeout(() => { if(d.parentNode) d.parentNode.removeChild(d); }, 3600);
+}
+
+/* ------------------------------ game record ----------------------------- */
+function syncRec(status){
+  if(!G || !P) return;
+  const final = !!status;
+  if(!G.rec){
+    if(!(G.answered > 0 || (final && score > 0))) return;
+    G.rec = { id:Date.now() + '-' + Math.random().toString(36).slice(2, 6), ts:G.start };
+    P.games.unshift(G.rec);
+    if(P.games.length > 200) P.games.length = 200;
+  }
+  Object.assign(G.rec, {
+    world:G.world, score, lines, level, correct:G.correct, wrong:G.wrong,
+    acc:G.answered ? Math.round(100 * G.correct / G.answered) : 0,
+    xp:G.xp, coins:G.coins, streak:G.bestStreak, bosses:G.bosses,
+    cat:JSON.parse(JSON.stringify(G.cat)), status:status || 'playing',
+    dur:Math.round((Date.now() - G.start) / 1000)
+  });
+}
+
+/* ------------------------------ state flow ------------------------------ */
+function resetGame(){
+  board = newBoard(); nextQ = []; holdType = null; canHold = true;
+  score = 0; level = 1; lines = 0; combo = -1; newBest = false;
+  clearing = null; particles = []; lastLevelShown = 1;
+  input.left = input.right = input.down = false; input.lastDir = input.curDir = 0; input.das = input.arr = 0;
+  el.wrap.classList.remove('dead');
+  hiScore = P ? P.best.score : 0;
+  G = newG(DB.settings.world || 1);
+  CH = null;
+  updateHud();
+}
+function setOverlay(which){ el.ovPause.hidden = which !== 'pause'; }
+function syncButtons(){
+  const busy = state === 'playing' || state === 'paused' || state === 'challenge';
+  el.start.disabled = busy;
+  el.pause.disabled = !(state === 'playing' || state === 'paused');
+  el.pause.textContent = state === 'paused' ? 'Continuar' : 'Pausa';
+  el.menu.disabled = !(state === 'welcome' || state === 'over' || state === 'paused');
+}
+function abandonCurrent(){
+  if(G && P && (state === 'playing' || state === 'paused' || state === 'challenge')){
+    G.final = true; syncRec('abandoned'); saveDB();
+  }
+  if(CH){ $('mChallenge').hidden = true; CH = null; }
+}
+function closeModals(){ document.querySelectorAll('.modal').forEach(m => { m.hidden = true; }); }
+
+function startGame(){
+  const name = cleanName($('nameInput').value || DB.last);
+  if(!name){ openMenu(); $('nameHint').hidden = false; $('nameInput').focus(); return false; }
+  abandonCurrent();
+  P = getProfile(name, true);
+  DB.last = P.name; $('nameInput').value = P.name;
+  let w = DB.settings.world || 1;
+  if(!worldUnlocked(P, w)) w = 1;
+  DB.settings.world = w;
+  applySkin(P.skin);
+  closeModals();
+  resetGame();
+  G.world = w;
+  state = 'playing';
+  setOverlay(null);
+  spawn();
+  syncButtons(); updateHud();
+  saveDB();
+  if(soundOn) ac();
+  return true;
+}
+function requestStart(){ return startGame(); }
+function pauseGame(){
+  if(state !== 'playing') return;
+  state = 'paused'; input.left = input.right = input.down = false;
+  setOverlay('pause'); syncButtons();
+}
+function resumeGame(){
+  if(state !== 'paused') return;
+  closeModals();
+  state = 'playing'; setOverlay(null); syncButtons(); lastTime = performance.now();
+}
+function togglePause(){ if(state === 'playing') pauseGame(); else if(state === 'paused') resumeGame(); }
+
+function gameOver(){
+  if(state === 'over') return;
+  state = 'over';
+  cur = null;
+  input.left = input.right = input.down = false;
+  if(CH){ $('mChallenge').hidden = true; CH = null; }
+  el.wrap.classList.add('dead');
+  setOverlay(null); syncButtons(); sfx.over();
+  finishGameStats();
+  showResults();
+}
+
+function finishGameStats(){
+  if(!G || !P) return;
+  G.final = true;
+  const acc = G.answered ? Math.round(100 * G.correct / G.answered) : 0;
+  const pb = G.prevBest;
+  G.result = {
+    score, acc, newScore:score > pb.score, newAcc:G.answered >= 5 && acc > pb.acc,
+    newXp:G.xp > pb.xp, newStreak:G.bestStreak > pb.streak
+  };
+  if(G.result.newScore) P.best.score = score;
+  if(G.result.newAcc) P.best.acc = acc;
+  if(G.result.newXp) P.best.xp = G.xp;
+  if(G.result.newStreak) P.best.streak = G.bestStreak;
+  checkAch();
+  syncRec('over');
+  saveDB();
+  updateHud();
+}
+
+/* ================================ RESULTS ============================== */
+function catSummary(cats){
+  const rows = CAT_ORDER.filter(c => cats[c].t > 0).map(c => ({ c, acc:Math.round(100 * cats[c].c / cats[c].t), t:cats[c].t, ok:cats[c].c }));
+  let best = null;
+  rows.forEach(r => { if(!best || r.acc > best.acc || (r.acc === best.acc && r.t > best.t)) best = r; });
+  const weak = rows.filter(r => r.acc < 70).sort((a, b) => a.acc - b.acc);
+  return { rows, best, weak };
+}
+function showResults(){
+  const R = G.result, acc = R.acc, sum = catSummary(G.cat);
+  let h = '<h2 class="grad" style="text-align:center">FIN DE LA PARTIDA</h2>' +
+          '<p class="lead" style="text-align:center">' + esc(P.name) + ' · ' + WORLDS[G.world].emoji + ' ' + esc(WORLDS[G.world].name) + '</p>' +
+          '<div class="big-score" id="resScore">' + score + '</div><p class="lead" style="text-align:center">Puntuación final</p>';
+  const tags = [];
+  if(R.newScore && score > 0) tags.push('<span class="tag gold">🏅 ¡Nuevo récord personal! (puntos)</span>');
+  if(R.newAcc) tags.push('<span class="tag gold">🎯 Mejor precisión: ' + acc + '%</span>');
+  if(R.newXp && G.xp > 0) tags.push('<span class="tag gold">⭐ Más XP en una partida</span>');
+  if(R.newStreak && G.bestStreak > 1) tags.push('<span class="tag gold">🔥 Mejor racha: ' + G.bestStreak + '</span>');
+  if(tags.length) h += '<div class="tagrow" style="justify-content:center">' + tags.join('') + '</div>';
+  h += '<h3>Resumen de retos</h3><div class="grid4">' +
+       '<div class="kpi good"><b>' + G.correct + '</b><span>Correctas</span></div>' +
+       '<div class="kpi bad"><b>' + G.wrong + '</b><span>Incorrectas</span></div>' +
+       '<div class="kpi"><b>' + (G.answered ? acc + '%' : '–') + '</b><span>Precisión</span></div>' +
+       '<div class="kpi xp"><b>' + G.xp + '</b><span>XP ganada</span></div></div>' +
+       '<div class="grid4" style="margin-top:10px">' +
+       '<div class="kpi coin"><b>' + G.coins + '</b><span>Monedas</span></div>' +
+       '<div class="kpi"><b>' + G.bestStreak + '</b><span>Mejor racha</span></div>' +
+       '<div class="kpi"><b>' + G.bosses + '</b><span>Jefes</span></div>' +
+       '<div class="kpi"><b>' + lines + '</b><span>Líneas</span></div></div>';
+  h += '<h3>Rendimiento por categoría</h3>';
+  if(sum.rows.length){
+    sum.rows.forEach(r => {
+      h += '<div class="catrow" style="--cc:' + CATS[r.c].color + '"><span>' + CATS[r.c].emoji + ' ' + esc(CATS[r.c].name) + '</span><div class="bar"><i style="width:' + r.acc + '%"></i></div><span>' + r.ok + '/' + r.t + ' · ' + r.acc + '%</span></div>';
+    });
+    h += '<h3>Mejor categoría</h3><div class="tagrow"><span class="tag good">' + CATS[sum.best.c].emoji + ' ' + esc(CATS[sum.best.c].name) + ' (' + sum.best.acc + '%)</span></div>';
+    h += '<h3>Necesitan mejorar</h3><div class="tagrow">' +
+         (sum.weak.length ? sum.weak.map(r => '<span class="tag warn">' + CATS[r.c].emoji + ' ' + esc(CATS[r.c].name) + ' (' + r.acc + '%)</span>').join('') : '<span class="tag good">¡Ninguna! Sigue así 💪</span>') + '</div>';
+  } else h += '<p class="lead">No has respondido ningún reto. ¡Limpia 3 líneas para activar el primero!</p>';
+  if(G.newAch.length){
+    h += '<h3>Logros nuevos</h3><div class="tagrow">' + G.newAch.map(id => { const a = ACH.find(x => x.id === id); return '<span class="tag gold">' + a.emoji + ' ' + esc(a.name) + '</span>'; }).join('') + '</div>';
+  }
+  if(G.missed.length){
+    h += '<h3>Para repasar</h3>';
+    G.missed.slice(0, 6).forEach(m => { h += '<div class="lead" style="margin:4px 0">❌ ' + esc(m.prompt) + ' → <b style="color:var(--good)">' + esc(m.answer) + '</b></div>'; });
+  }
+  const ri = rankOf(P.xp), r = RANKS[ri];
+  h += '<h3>Tu progreso</h3><div class="tagrow"><span class="tag">' + r.emoji + ' ' + r.name + ' · ' + P.xp + ' XP total</span><span class="tag">🪙 ' + P.coins + '</span><span class="tag">🏅 Récord: ' + P.best.score + '</span></div>';
+  h += '<div class="row center" style="margin-top:20px"><button class="btn primary big" id="resAgain">▶ Jugar otra vez</button><button class="btn big" id="resMenu">Menú</button></div>';
+  $('resCard').innerHTML = h;
+  $('mResults').hidden = false;
+}
+$('resCard').addEventListener('click', e => {
+  const b = e.target.closest('button'); if(!b) return;
+  if(b.id === 'resAgain') startGame();
+  else if(b.id === 'resMenu'){ $('mResults').hidden = true; openMenu(); }
+});
+
+/* ================================= MENU ================================ */
+function openMenu(){
+  const dl = $('nameList');
+  dl.innerHTML = Object.keys(DB.players).map(k => '<option value="' + esc(DB.players[k].name) + '">').join('');
+  if(!$('nameInput').value && DB.last) $('nameInput').value = DB.last;
+  $('menuResume').hidden = state !== 'paused';
+  $('mMenu').hidden = false;
+  refreshMenu();
+}
+function refreshMenu(){
+  const p = getProfile($('nameInput').value, false);
+  if(p){
+    const r = RANKS[rankOf(p.xp)];
+    $('pstats').innerHTML = '<span>' + r.emoji + ' <b>' + r.name + '</b></span><span>XP <b>' + p.xp + '</b></span><span>🪙 <b>' + p.coins + '</b></span><span>🏅 Récord <b>' + p.best.score + '</b></span>';
+  } else $('pstats').innerHTML = '<span>' + ($('nameInput').value ? 'Jugador nuevo ✨' : 'Escribe tu nombre') + '</span>';
+  let sel = DB.settings.world || 1;
+  if(!worldUnlocked(p, sel)) sel = 1;
+  let h = '';
+  for(let w = 1; w <= 6; w++){
+    const W_ = WORLDS[w], un = worldUnlocked(p, w), rq = W_.req;
+    let lock = '';
+    if(!un){
+      const need = [];
+      need.push((p ? p.xp : 0) + '/' + rq.xp + ' XP');
+      need.push((p ? p.correct : 0) + '/' + rq.ok + ' aciertos');
+      if(rq.boss) need.push((p ? p.bosses : 0) + '/' + rq.boss + ' jefe');
+      lock = '<em>🔒 ' + need.join(' · ') + '</em>';
+    }
+    h += '<button class="world' + (w === sel && un ? ' sel' : '') + (un ? '' : ' locked') + '" style="--wc:' + W_.color + '" data-w="' + w + '"' + (un ? '' : ' aria-disabled="true"') + '>' +
+         '<span class="w-emoji">' + W_.emoji + '</span><b>' + w + '. ' + esc(W_.name) + '</b>' +
+         '<small>📖 ' + esc(W_.vocab) + '<br>✏️ ' + esc(W_.grammar) + '</small>' + lock + '</button>';
+  }
+  $('worlds').innerHTML = h;
+}
+$('worlds').addEventListener('click', e => {
+  const b = e.target.closest('.world'); if(!b) return;
+  const w = +b.dataset.w;
+  if(!worldUnlocked(getProfile($('nameInput').value, false), w)) return;
+  DB.settings.world = w; saveDB(); refreshMenu();
+});
+$('nameInput').addEventListener('input', () => { $('nameHint').hidden = true; refreshMenu(); });
+$('nameInput').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); startGame(); } });
+$('menuStart').addEventListener('click', () => { startGame(); });
+$('menuResume').addEventListener('click', () => { resumeGame(); });
+$('menuProfile').addEventListener('click', () => {
+  const n = cleanName($('nameInput').value);
+  if(!n){ $('nameHint').hidden = false; $('nameInput').focus(); return; }
+  openProfile(getProfile(n, true));
+});
+$('menuTeacher').addEventListener('click', () => openTeacher());
+
+/* ============================ PROFILE & SKINS ========================== */
+let profView = null;
+function applySkin(id){
+  const s = SKINS.find(x => x.id === id) || SKINS[0];
+  Object.assign(COLORS, s.colors); SKIN_STYLE = s.style;
+}
+function openProfile(p){
+  profView = p; renderProfile(); $('mProfile').hidden = false;
+}
+function renderProfile(){
+  const p = profView, ri = rankOf(p.xp), r = RANKS[ri], nx = RANKS[ri + 1];
+  let h = '<div class="row"><h2 class="grad">PERFIL</h2><span class="spacer"></span><button class="btn small" id="profClose">✕ Cerrar</button></div>' +
+          '<p class="lead">' + esc(p.name) + '</p>' +
+          '<div class="grid4" style="margin-top:12px">' +
+          '<div class="kpi"><b>' + r.emoji + '</b><span>' + r.name + '</span></div>' +
+          '<div class="kpi xp"><b>' + p.xp + '</b><span>XP total' + (nx ? ' · próx. ' + nx.xp : '') + '</span></div>' +
+          '<div class="kpi coin"><b>' + p.coins + '</b><span>Monedas</span></div>' +
+          '<div class="kpi"><b>' + p.best.score + '</b><span>Récord</span></div></div>';
+  h += '<h3>Insignias de rango</h3><div class="tagrow">' + RANKS.map((x, i) => '<span class="tag' + (i <= ri ? ' gold' : '') + '" style="' + (i <= ri ? '' : 'opacity:.4') + '">' + x.emoji + ' ' + x.name + ' · ' + x.xp + ' XP</span>').join('') + '</div>';
+  h += '<h3>Estilos de bloques</h3><div class="skins">';
+  SKINS.forEach(s => {
+    const own = p.skins.indexOf(s.id) >= 0, eq = p.skin === s.id;
+    let act;
+    if(eq) act = '<span class="tag good">✔ En uso</span>';
+    else if(own) act = '<button class="btn small" data-eq="' + s.id + '">Usar</button>';
+    else if(s.ach){
+      const a = ACH.find(x => x.id === s.ach);
+      act = p.ach[s.ach] ? '<button class="btn small primary" data-get="' + s.id + '">¡Reclamar!</button>' : '<span class="tag">🔒 ' + a.emoji + ' ' + esc(a.name) + '</span>';
+    } else act = '<button class="btn small" data-buy="' + s.id + '"' + (p.coins >= s.cost ? '' : ' disabled') + '>Comprar · ' + s.cost + ' 🪙</button>';
+    h += '<div class="skin' + (eq ? ' eq' : '') + '"><b>' + s.name + '</b><div class="sw">' + TYPES.map(t => '<i style="background:' + s.colors[t] + '"></i>').join('') + '</div>' + act + '</div>';
+  });
+  h += '</div><h3>Logros (' + Object.keys(p.ach).length + '/' + ACH.length + ')</h3><div class="achs">';
+  ACH.forEach(a => { h += '<div class="ach' + (p.ach[a.id] ? '' : ' lock') + '"><span class="ai">' + a.emoji + '</span><div><b>' + esc(a.name) + '</b><small>' + esc(a.desc) + '</small></div></div>'; });
+  h += '</div>';
+  $('profCard').innerHTML = h;
+}
+$('profCard').addEventListener('click', e => {
+  const b = e.target.closest('button'); if(!b || !profView) return;
+  const p = profView;
+  if(b.id === 'profClose'){ $('mProfile').hidden = true; refreshMenu(); return; }
+  if(b.dataset.eq){ p.skin = b.dataset.eq; if(P === p) applySkin(p.skin); }
+  else if(b.dataset.get){ if(p.skins.indexOf(b.dataset.get) < 0) p.skins.push(b.dataset.get); p.skin = b.dataset.get; }
+  else if(b.dataset.buy){
+    const s = SKINS.find(x => x.id === b.dataset.buy);
+    if(p.coins >= s.cost && p.skins.indexOf(s.id) < 0){ p.coins -= s.cost; p.skins.push(s.id); p.skin = s.id; }
+  }
+  if(P === p || (P && P.name === p.name)) applySkin(p.skin); else applySkin(p.skin);
+  saveDB(); renderProfile(); refreshMenu();
+});
+
+/* ============================== TEACHER MODE =========================== */
+const TS = { sel:'', sep:',' };
+const accOf = (c, t) => t ? Math.round(100 * c / t) : null;
+function fmtDate(ts){
+  const d = new Date(ts), p2 = n => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()) + ' ' + p2(d.getHours()) + ':' + p2(d.getMinutes());
+}
+function csvCell(v, sep){
+  v = String(v == null ? '' : v);
+  return (v.indexOf(sep) >= 0 || /["\n\r]/.test(v)) ? '"' + v.replace(/"/g, '""') + '"' : v;
+}
+function buildCSV(key, sep){
+  sep = sep || ',';
+  const head = ['Alumno', 'Fecha', 'Mundo', 'Puntos', 'Líneas', 'Nivel', 'Aciertos', 'Fallos', 'Precisión %', 'XP', 'Monedas', 'Mejor racha', 'Jefes derrotados', 'Estado'];
+  CAT_ORDER.forEach(c => { head.push(CATS[c].name + ' aciertos'); head.push(CATS[c].name + ' total'); });
+  head.push('XP total del alumno');
+  const rows = [head];
+  Object.keys(DB.players).sort().forEach(k => {
+    if(key && k !== key) return;
+    const p = DB.players[k];
+    p.games.slice().reverse().forEach(gm => {
+      const row = [p.name, fmtDate(gm.ts), WORLDS[gm.world] ? gm.world + '. ' + WORLDS[gm.world].name : gm.world, gm.score, gm.lines, gm.level,
+                   gm.correct, gm.wrong, gm.acc, gm.xp, gm.coins, gm.streak, gm.bosses, gm.status];
+      CAT_ORDER.forEach(c => { const s = (gm.cat && gm.cat[c]) || { c:0, t:0 }; row.push(s.c); row.push(s.t); });
+      row.push(p.xp);
+      rows.push(row);
+    });
+  });
+  return '﻿' + rows.map(r => r.map(v => csvCell(v, sep)).join(sep)).join('\r\n');
+}
+function downloadCSV(key){
+  const csv = buildCSV(key, TS.sep);
+  const name = 'spanish-tetris-' + (key ? key.replace(/[^a-z0-9áéíóúñü]+/gi, '_') : 'clase') + '.csv';
+  try{
+    const blob = new Blob([csv], { type:'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  }catch(e){}
+  return csv;
+}
+function openTeacher(){ renderTeacher(); $('mTeacher').hidden = false; }
+function teacherDetailHtml(){
+  const entries = Object.keys(DB.players).map(k => ({ k, p:DB.players[k] }));
+  const sel = TS.sel && DB.players[TS.sel] ? DB.players[TS.sel] : null;
+  let h = '';
+  if(sel){
+    const tot = sel.correct + sel.wrong;
+    h += '<h3>Alumno: ' + esc(sel.name) + '</h3><div class="tcards">' +
+         '<div class="kpi"><b>' + sel.games.length + '</b><span>Partidas</span></div>' +
+         '<div class="kpi"><b>' + sel.best.score + '</b><span>Mejor puntuación</span></div>' +
+         '<div class="kpi"><b>' + (tot ? accOf(sel.correct, tot) + '%' : '–') + '</b><span>Precisión</span></div>' +
+         '<div class="kpi xp"><b>' + sel.xp + '</b><span>XP total</span></div></div>';
+    h += '<h3>Rendimiento por categoría</h3>' + catBars(sel.cat);
+    h += '<h3>Resultados de cada partida</h3><div class="tbl-wrap"><table><thead><tr><th>Fecha</th><th>Mundo</th><th>Puntos</th><th>✔</th><th>✖</th><th>Precisión</th><th>XP</th><th>Estado</th></tr></thead><tbody>' +
+         (sel.games.length ? sel.games.map(gm => '<tr style="cursor:default"><td>' + fmtDate(gm.ts) + '</td><td>' + gm.world + '</td><td>' + gm.score + '</td><td>' + gm.correct + '</td><td>' + gm.wrong + '</td><td>' + gm.acc + '%</td><td>' + gm.xp + '</td><td>' + esc(gm.status) + '</td></tr>').join('') : '<tr><td colspan="8">Sin partidas todavía.</td></tr>') +
+         '</tbody></table></div>';
+  } else {
+    const sum = catStats(); let games = 0, xp = 0, c = 0, t = 0;
+    entries.forEach(({ p }) => { games += p.games.length; xp += p.xp; c += p.correct; t += p.correct + p.wrong; CAT_ORDER.forEach(k => { sum[k].c += p.cat[k].c; sum[k].t += p.cat[k].t; }); });
+    h += '<h3>Resumen de la clase</h3><div class="tcards">' +
+         '<div class="kpi"><b>' + entries.length + '</b><span>Alumnos</span></div>' +
+         '<div class="kpi"><b>' + games + '</b><span>Partidas</span></div>' +
+         '<div class="kpi"><b>' + (t ? accOf(c, t) + '%' : '–') + '</b><span>Precisión media</span></div>' +
+         '<div class="kpi xp"><b>' + xp + '</b><span>XP total</span></div></div>' +
+         '<h3>Rendimiento por categoría (clase)</h3>' + catBars(sum);
+  }
+  return h;
+}
+function catBars(cats){
+  return CAT_ORDER.map(c => {
+    const s = cats[c], a = accOf(s.c, s.t);
+    return '<div class="catrow" style="--cc:' + CATS[c].color + '"><span>' + CATS[c].emoji + ' ' + esc(CATS[c].name) + '</span><div class="bar"><i style="width:' + (a || 0) + '%"></i></div><span>' + (s.t ? s.c + '/' + s.t + ' · ' + a + '%' : '–') + '</span></div>';
+  }).join('');
+}
+function teacherListHtml(){
+  const rows = Object.keys(DB.players).map(k => ({ k, p:DB.players[k] })).sort((a, b) => a.p.name.localeCompare(b.p.name, 'es'));
+  return '<div class="tbl-wrap"><table><thead><tr><th>Alumno</th><th>Partidas</th><th>Mejor</th><th>Precisión</th><th>XP</th><th>🪙</th><th>Última</th></tr></thead><tbody>' +
+    (rows.length ? rows.map(({ k, p }) => {
+      const tot = p.correct + p.wrong, last = p.games[0] ? fmtDate(p.games[0].ts).slice(0, 10) : '–';
+      return '<tr data-k="' + esc(k) + '" class="' + (k === TS.sel ? 'sel' : '') + '"><td><b>' + esc(p.name) + '</b></td><td>' + p.games.length + '</td><td>' + p.best.score + '</td><td>' + (tot ? accOf(p.correct, tot) + '%' : '–') + '</td><td>' + p.xp + '</td><td>' + p.coins + '</td><td>' + last + '</td></tr>';
+    }).join('') : '<tr><td colspan="7" style="cursor:default">Todavía no hay alumnos. Los nombres aparecen cuando alguien juega.</td></tr>') +
+    '</tbody></table></div>';
+}
+function renderTeacher(){
+  const names = Object.keys(DB.players).map(k => '<option value="' + esc(DB.players[k].name) + '">').join('');
+  $('teachCard').innerHTML =
+    '<div class="row"><h2 class="grad">MODO PROFESOR</h2><span class="spacer"></span><button class="btn small" id="tClose">✕ Cerrar</button></div>' +
+    '<p class="lead">Resultados guardados en este navegador (localStorage). No se envía nada a ningún servidor.</p>' +
+    '<div class="row" style="margin-top:12px"><div><label class="lead" for="tName">Nombre del alumno</label><br>' +
+    '<input type="text" id="tName" list="tNames" placeholder="Buscar alumno…" value="' + esc(TS.sel && DB.players[TS.sel] ? DB.players[TS.sel].name : '') + '" autocomplete="off"><datalist id="tNames">' + names + '</datalist></div>' +
+    '<button class="btn small" id="tAll">Ver clase</button></div>' +
+    '<h3>Alumnos</h3><div id="tList">' + teacherListHtml() + '</div>' +
+    '<div id="tDetail">' + teacherDetailHtml() + '</div>' +
+    '<h3>Exportar y ajustes</h3><div class="row">' +
+    '<label class="check">Separador <select id="tSep"><option value=","' + (TS.sep === ',' ? ' selected' : '') + '>coma ( , )</option><option value=";"' + (TS.sep === ';' ? ' selected' : '') + '>punto y coma ( ; )</option></select></label>' +
+    '<button class="btn primary" id="tCsvAll">⬇ CSV de toda la clase</button>' +
+    '<button class="btn" id="tCsvOne"' + (TS.sel ? '' : ' disabled') + '>⬇ CSV del alumno</button></div>' +
+    '<div class="row" style="margin-top:12px"><label class="check"><input type="checkbox" id="tUnlock"' + (DB.settings.unlockAll ? ' checked' : '') + '> Desbloquear todos los mundos</label><span class="spacer"></span>' +
+    '<button class="btn small danger" id="tDelOne"' + (TS.sel ? '' : ' disabled') + '>Borrar alumno</button>' +
+    '<button class="btn small danger" id="tDelAll">Borrar todo</button></div>';
+}
+function refreshTeacherBody(){
+  $('tList').innerHTML = teacherListHtml();
+  $('tDetail').innerHTML = teacherDetailHtml();
+  $('tCsvOne').disabled = !TS.sel; $('tDelOne').disabled = !TS.sel;
+}
+$('teachCard').addEventListener('click', e => {
+  const tr = e.target.closest('tr[data-k]');
+  if(tr){ TS.sel = tr.dataset.k; $('tName').value = DB.players[TS.sel].name; refreshTeacherBody(); return; }
+  const b = e.target.closest('button'); if(!b) return;
+  if(b.id === 'tClose'){ $('mTeacher').hidden = true; refreshMenu(); }
+  else if(b.id === 'tAll'){ TS.sel = ''; $('tName').value = ''; refreshTeacherBody(); }
+  else if(b.id === 'tCsvAll') downloadCSV('');
+  else if(b.id === 'tCsvOne') downloadCSV(TS.sel);
+  else if(b.id === 'tDelOne'){
+    if(TS.sel && DB.players[TS.sel] && confirm('¿Borrar todos los datos de ' + DB.players[TS.sel].name + '?')){ delete DB.players[TS.sel]; TS.sel = ''; saveDB(); renderTeacher(); }
+  } else if(b.id === 'tDelAll'){
+    if(confirm('¿Borrar TODOS los alumnos y resultados?')){ DB.players = {}; DB.last = ''; TS.sel = ''; P = null; saveDB(); renderTeacher(); }
+  }
+});
+$('teachCard').addEventListener('input', e => {
+  if(e.target.id === 'tName'){
+    const k = pkey(e.target.value);
+    TS.sel = DB.players[k] ? k : '';
+    refreshTeacherBody();
+  }
+});
+$('teachCard').addEventListener('change', e => {
+  if(e.target.id === 'tSep') TS.sep = e.target.value;
+  else if(e.target.id === 'tUnlock'){ DB.settings.unlockAll = e.target.checked; saveDB(); }
+});
+
+/* ================================ INPUT ================================ */
+function press(act){
+  if(act === 'pause'){ togglePause(); return; }
+  if(state !== 'playing') return;
+  switch(act){
+    case 'left':  input.left = true;  input.lastDir = -1; input.curDir = -1; input.das = 0; input.arr = 0; move(-1); break;
+    case 'right': input.right = true; input.lastDir = 1;  input.curDir = 1;  input.das = 0; input.arr = 0; move(1);  break;
+    case 'down':  input.down = true; break;
+    case 'cw':    rotate(1); break;
+    case 'ccw':   rotate(-1); break;
+    case 'hard':  hardDrop(); break;
+    case 'hold':  doHold(); break;
+  }
+}
+function release(act){
+  if(act === 'left') input.left = false;
+  else if(act === 'right') input.right = false;
+  else if(act === 'down') input.down = false;
+}
+
+const KEYMAP = {
+  ArrowLeft:'left', ArrowRight:'right', ArrowDown:'down', ArrowUp:'cw', KeyX:'cw', KeyZ:'ccw',
+  Space:'hard', KeyC:'hold', ShiftLeft:'hold', ShiftRight:'hold', KeyP:'pause'
+};
+window.addEventListener('keydown', e => {
+  const tg = e.target && e.target.tagName;
+  if(tg === 'INPUT' || tg === 'SELECT' || tg === 'TEXTAREA') return;      // typing a name
+  if(e.ctrlKey || e.metaKey || e.altKey) return;
+  if(state === 'challenge'){ challengeKey(e); return; }
+  if(e.code === 'Escape'){
+    if(isOpen('mProfile')){ $('mProfile').hidden = true; refreshMenu(); }
+    else if(isOpen('mTeacher')){ $('mTeacher').hidden = true; refreshMenu(); }
+    return;
+  }
+  if(e.code === 'KeyR'){
+    const menuLayer = isOpen('mMenu') || isOpen('mProfile') || isOpen('mTeacher');
+    if(!e.repeat && (!modalOpen() || (state === 'over' && !menuLayer))){ e.preventDefault(); startGame(); }
+    return;
+  }
+  if(modalOpen()) return;                                                  // let buttons behave natively
+  const act = KEYMAP[e.code];
+  if(!act) return;
+  e.preventDefault();                       // stop page scrolling
+  if(e.repeat) return;                      // auto-repeat is handled by our own DAS/ARR
+  press(act);
+}, { passive:false });
+window.addEventListener('keyup', e => {
+  const act = KEYMAP[e.code];
+  if(act) release(act);
+});
+window.addEventListener('blur', () => { input.left = input.right = input.down = false; if(state === 'playing') pauseGame(); });
+document.addEventListener('visibilitychange', () => { if(document.hidden && state === 'playing') pauseGame(); });
+
+// on-screen touch controls
+document.querySelectorAll('[data-act]').forEach(b => {
+  const act = b.dataset.act;
+  b.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    try{ b.setPointerCapture(e.pointerId); }catch(_){}
+    b.classList.add('on'); press(act);
+  });
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev =>
+    b.addEventListener(ev, () => { b.classList.remove('on'); release(act); }));
+  b.addEventListener('contextmenu', e => e.preventDefault());
+});
+document.addEventListener('touchmove', e => {
+  if(e.target.closest && e.target.closest('.board-wrap, .touch')) e.preventDefault();
+}, { passive:false });
+
+// buttons
+function btn(node, fn){ node.addEventListener('click', () => { fn(); node.blur(); }); }
+btn(el.start, requestStart);
+btn(el.restart, startGame);
+btn(el.pause, togglePause);
+btn(el.menu, () => { if(state === 'paused' || state === 'welcome' || state === 'over') openMenu(); });
+btn($('ovResume'), resumeGame);
+btn(el.sound, () => {
+  soundOn = !soundOn;
+  el.sound.setAttribute('aria-pressed', String(soundOn));
+  el.sound.textContent = 'Sonido: ' + (soundOn ? 'Sí' : 'No');
+  if(soundOn){ ac(); sfx.rotate(); }
+});
+
+/* ================================ UPDATE =============================== */
+function updateParticles(dt){
+  for(let i = particles.length - 1; i >= 0; i--){
+    const p = particles[i];
+    p.life -= dt / 1000;
+    if(p.life <= 0){ particles.splice(i, 1); continue; }
+    p.x += p.vx * dt / 1000; p.y += p.vy * dt / 1000; p.vy += 420 * dt / 1000;
+  }
+}
+function update(dt){
+  updateParticles(dt);
+
+  if(clearing){
+    clearing.t += dt;
+    if(clearing.t >= CLEAR_MS) finishClear();
+    return;
+  }
+  if(!cur) return;
+
+  // horizontal auto-repeat (DAS / ARR)
+  let dir = 0;
+  if(input.left && input.right) dir = input.lastDir;
+  else if(input.left) dir = -1;
+  else if(input.right) dir = 1;
+  if(dir !== input.curDir){ input.curDir = dir; input.das = 0; input.arr = 0; }
+  if(dir !== 0){
+    input.das += dt;
+    if(input.das >= DAS){
+      input.arr += dt;
+      while(input.arr >= ARR){ input.arr -= ARR; if(!move(dir)) break; }
+    }
+  }
+  if(!cur) return;
+
+  // gravity + lock delay
+  const interval = input.down ? Math.min(speedMs(), SOFT_INTERVAL) : speedMs();
+  if(grounded()){
+    dropTimer = 0;
+    lockTimer += dt;
+    if(lockTimer >= LOCK_DELAY){ lockPiece(); }
+  } else {
+    lockTimer = 0;
+    dropTimer += dt;
+    while(dropTimer >= interval && !grounded()){
+      dropTimer -= interval;
+      cur.y++;
+      if(input.down) addScore(1);
+      if(cur.y > lowestY){ lowestY = cur.y; lockResets = 0; }
+    }
+  }
+}
+
+/* ================================ RENDER =============================== */
+function rr(ctx, x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+function drawCell(ctx, px, py, s, color, alpha, glow){
+  const pad = 1.5, w = s - pad * 2, r = s * .18;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  if(SKIN_STYLE === 'flat'){
+    ctx.fillStyle = color;
+    rr(ctx, px + pad, py + pad, w, w, r * .4); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.25)';
+    ctx.fillRect(px + pad + w * .16, py + pad + w * .16, w * .68, w * .68);
+    ctx.strokeStyle = 'rgba(0,0,0,.45)'; ctx.lineWidth = 1.5;
+    rr(ctx, px + pad, py + pad, w, w, r * .4); ctx.stroke();
+    ctx.restore();
+    return;
+  }
+  if(glow){ ctx.shadowColor = color; ctx.shadowBlur = 12; }
+  ctx.fillStyle = color;
+  rr(ctx, px + pad, py + pad, w, w, r); ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = 'rgba(255,255,255,.28)';
+  rr(ctx, px + pad, py + pad, w, w * .48, r); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,.22)';
+  rr(ctx, px + pad + w * .12, py + pad + w * .58, w * .76, w * .3, r * .6); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 1;
+  rr(ctx, px + pad + .5, py + pad + .5, w - 1, w - 1, r); ctx.stroke();
+  ctx.restore();
+}
+function drawGhostCell(ctx, px, py, s, color){
+  const pad = 2.5, w = s - pad * 2;
+  ctx.save();
+  ctx.globalAlpha = .22; ctx.fillStyle = color;
+  rr(ctx, px + pad, py + pad, w, w, s * .15); ctx.fill();
+  ctx.globalAlpha = .75; ctx.strokeStyle = color; ctx.lineWidth = 1.5;
+  rr(ctx, px + pad, py + pad, w, w, s * .15); ctx.stroke();
+  ctx.restore();
+}
+
+function drawPreview(ctx, type, cx, cy, s, alpha){
+  const m = SHAPES[type];
+  let minR = 9, maxR = -1, minC = 9, maxC = -1;
+  m.forEach((row, r) => row.forEach((v, c) => { if(v){ minR = Math.min(minR, r); maxR = Math.max(maxR, r); minC = Math.min(minC, c); maxC = Math.max(maxC, c); } }));
+  const w = (maxC - minC + 1) * s, h = (maxR - minR + 1) * s;
+  const ox = cx - w / 2, oy = cy - h / 2;
+  m.forEach((row, r) => row.forEach((v, c) => { if(v) drawCell(ctx, ox + (c - minC) * s, oy + (r - minR) * s, s, COLORS[type], alpha, false); }));
+}
+
+function renderSide(){
+  gNext.clearRect(0, 0, 100, 216);
+  if(nextQ && state !== 'welcome'){
+    for(let i = 0; i < 3; i++){
+      if(nextQ[i]) drawPreview(gNext, nextQ[i], 50, 36 + i * 72, i === 0 ? 22 : 18, i === 0 ? 1 : .8);
+    }
+  }
+  gHold.clearRect(0, 0, 100, 72);
+  if(holdType) drawPreview(gHold, holdType, 50, 36, 20, canHold ? 1 : .3);
+}
+
+function render(){
+  const bg = g.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, '#0d0d1f'); bg.addColorStop(1, '#06060e');
+  g.fillStyle = bg; g.fillRect(0, 0, W, H);
+
+  g.strokeStyle = 'rgba(255,255,255,.055)'; g.lineWidth = 1;
+  g.beginPath();
+  for(let c = 1; c < COLS; c++){ g.moveTo(c * CELL + .5, 0); g.lineTo(c * CELL + .5, H); }
+  for(let r = 1; r < ROWS; r++){ g.moveTo(0, r * CELL + .5); g.lineTo(W, r * CELL + .5); }
+  g.stroke();
+
+  if(!board) return;
+
+  for(let r = 0; r < ROWS; r++)
+    for(let c = 0; c < COLS; c++)
+      if(board[r][c]) drawCell(g, c * CELL, r * CELL, CELL, COLORS[board[r][c]], 1, false);
+
+  if(clearing){
+    const k = clearing.t / CLEAR_MS;
+    const a = (Math.floor(k * 7) % 2 ? .95 : .45) * (1 - k * .6);
+    g.fillStyle = 'rgba(255,255,255,' + a.toFixed(3) + ')';
+    clearing.rows.forEach(r => g.fillRect(0, r * CELL, W, CELL));
+  }
+
+  if(cur && state !== 'over'){
+    const gy = ghostY();
+    cur.m.forEach((row, r) => row.forEach((v, c) => {
+      if(!v) return;
+      if(gy !== cur.y && gy + r >= 0) drawGhostCell(g, (cur.x + c) * CELL, (gy + r) * CELL, CELL, COLORS[cur.type]);
+    }));
+    cur.m.forEach((row, r) => row.forEach((v, c) => {
+      if(v && cur.y + r >= 0) drawCell(g, (cur.x + c) * CELL, (cur.y + r) * CELL, CELL, COLORS[cur.type], 1, true);
+    }));
+  }
+
+  for(const p of particles){
+    g.globalAlpha = Math.max(0, p.life / p.max);
+    g.fillStyle = p.color;
+    g.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+  }
+  g.globalAlpha = 1;
+}
+
+/* ================================= LOOP ================================ */
+function frame(t){
+  const dt = Math.min(100, t - lastTime || 0);
+  lastTime = t;
+  if(state === 'playing') update(dt);
+  else if(state === 'challenge') tickChallenge(dt);
+  render();
+  renderSide();
+  requestAnimationFrame(frame);
+}
+
+/* ================================= INIT ================================ */
+board = newBoard(); nextQ = []; holdType = null; canHold = true;
+score = 0; level = 1; lines = 0; combo = -1; newBest = false;
+(function(){
+  const last = DB.last && DB.players[pkey(DB.last)];
+  if(last){ P = getProfile(DB.last, false); hiScore = P.best.score; applySkin(P.skin); }
+})();
+updateHud(); syncButtons(); setOverlay(null);
+openMenu();
+requestAnimationFrame(t => { lastTime = t; requestAnimationFrame(frame); });
+
+</script>
+</body>
+</html>

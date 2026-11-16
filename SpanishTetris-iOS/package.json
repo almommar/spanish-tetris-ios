@@ -1,0 +1,10 @@
+{
+  "name": "spanish-tetris-ios",
+  "version": "1.0.0",
+  "scripts": {},
+  "dependencies": {
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/cli": "^6.0.0",
+    "@capacitor/ios": "^6.0.0"
+  }
+}
