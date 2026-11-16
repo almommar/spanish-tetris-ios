@@ -29,10 +29,23 @@ jobs:
           # 2. Instalar Capacitor
           npm install @capacitor/core @capacitor/cli @capacitor/ios
 
-          # 3. Asegurar carpeta www con el juego
+          # 3. Localizar automáticamente el archivo HTML de tu juego
           mkdir -p www
-          if [ -f "index.html" ]; then
-            rsync -av --exclude 'www' --exclude '.git' --exclude '.github' --exclude 'node_modules' ./ www/
+          HTML_FILE=$(find . -maxdepth 4 -iname "*.html" ! -path "*/node_modules/*" ! -path "*/.git/*" ! -path "*/www/*" | head -n 1)
+
+          if [ -n "$HTML_FILE" ]; then
+            echo "--> Archivo HTML encontrado en: $HTML_FILE"
+            HTML_DIR=$(dirname "$HTML_FILE")
+            # Copiar todos los recursos de esa carpeta (CSS, JS, imágenes) a www
+            cp -r "$HTML_DIR"/* www/ 2>/dev/null || true
+            # Asegurar que exista index.html en minúsculas
+            if [ ! -f "www/index.html" ]; then
+              cp "$HTML_FILE" www/index.html
+            fi
+          else
+            echo "ERROR: No se encontró ningún archivo .html en el repositorio. Archivos actuales:"
+            ls -R
+            exit 1
           fi
 
           # 4. Crear configuración de Capacitor si no existe
