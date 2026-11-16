@@ -1,0 +1,48 @@
+name: Build iOS IPA
+
+on:
+  push:
+    branches: [ "**" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instalar dependencias y crear proyecto iOS
+        run: |
+          npm install
+          npx cap add ios
+          npx cap sync ios
+
+      - name: Compilar App con Xcode
+        run: |
+          cd ios/App
+          xcodebuild -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath ../../build/App.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            archive
+
+      - name: Empaquetar como archivo .IPA
+        run: |
+          mkdir -p Payload
+          cp -r build/App.xcarchive/Products/Applications/App.app Payload/
+          zip -r SpanishTetris.ipa Payload
+
+      - name: Subir el IPA a los resultados
+        uses: actions/upload-artifact@v4
+        with:
+          name: SpanishTetris-iOS-IPA
+          path: SpanishTetris.ipa
